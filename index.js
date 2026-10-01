@@ -1,4 +1,3 @@
-
 const {
   Client,
   GatewayIntentBits,
@@ -14,36 +13,49 @@ const {
 
 const fs = require("fs");
 
+// ======================================================
+// CONFIGURAÇÃO
+// ======================================================
+
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
+
+if (!TOKEN || !CLIENT_ID) {
+  console.error("❌ TOKEN ou CLIENT_ID não configurado.");
+  process.exit(1);
+}
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// ==============================
+// ======================================================
 // BANCO DE DADOS
-// ==============================
+// ======================================================
 
 const DB_FILE = "./players.json";
 
 if (!fs.existsSync(DB_FILE)) {
-  fs.writeFileSync(DB_FILE, JSON.stringify({}, null, 2));
+  fs.writeFileSync(DB_FILE, "{}");
 }
 
-let players = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+let players = {};
+
+try {
+  players = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+} catch {
+  players = {};
+}
 
 function saveDB() {
   fs.writeFileSync(DB_FILE, JSON.stringify(players, null, 2));
 }
 
-// ==============================
+// ======================================================
 // PERSONAGENS
-// ==============================
+// ======================================================
 
 const characters = [
-
-  // COMUNS
   {
     name: "Leorio",
     rarity: "Comum",
@@ -74,7 +86,6 @@ const characters = [
     skills: ["Manipulação de Papel"]
   },
 
-  // INCOMUNS
   {
     name: "Shizuku",
     rarity: "Incomum",
@@ -135,7 +146,6 @@ const characters = [
     skills: ["Pain Packer"]
   },
 
-  // RAROS
   {
     name: "Killua Zoldyck",
     rarity: "Raro",
@@ -181,7 +191,6 @@ const characters = [
     skills: ["Big Bang Impact"]
   },
 
-  // ÉPICOS
   {
     name: "Hisoka",
     rarity: "Épico",
@@ -227,7 +236,6 @@ const characters = [
     skills: ["Dragon Head", "Dragon Dive"]
   },
 
-  // LENDÁRIOS
   {
     name: "Chrollo Lucilfer",
     rarity: "Lendário",
@@ -273,7 +281,6 @@ const characters = [
     skills: ["Copy"]
   },
 
-  // MÍTICO
   {
     name: "Meruem",
     rarity: "Mítico",
@@ -288,16 +295,13 @@ const characters = [
     speed: 125,
     skills: ["Rage Blast"]
   }
-
 ];
 
-// ==============================
+// ======================================================
 // BOSSES
-// ==============================
+// ======================================================
 
 const bosses = [
-
-  // LEVEL 1+
   {
     name: "Bandido",
     minLevel: 1,
@@ -338,7 +342,7 @@ const bosses = [
     money: 60
   },
 
-  // TRUPE FANTASMA
+  // TRUPE
   {
     name: "Kalluto",
     minLevel: 25,
@@ -449,7 +453,7 @@ const bosses = [
     money: 400
   },
 
-  // FORMIGAS QUIMERA
+  // FORMIGAS
   {
     name: "Soldado Quimera",
     minLevel: 70,
@@ -531,7 +535,6 @@ const bosses = [
     money: 1100
   },
 
-  // FINAL
   {
     name: "Meruem",
     minLevel: 180,
@@ -541,42 +544,40 @@ const bosses = [
     xp: 3000,
     money: 2500
   }
-
 ];
 
-// ==============================
-// SORTEIO DE PERSONAGEM
-// ==============================
+// ======================================================
+// FUNÇÕES
+// ======================================================
+
+function getCharacter(name) {
+  return characters.find(c => c.name === name);
+}
+
+function getBoss(name) {
+  return bosses.find(b => b.name === name);
+}
 
 function randomCharacter() {
-
   const total = characters.reduce((sum, c) => sum + c.chance, 0);
 
-  let random = Math.random() * total;
+  let roll = Math.random() * total;
 
   for (const character of characters) {
+    roll -= character.chance;
 
-    random -= character.chance;
-
-    if (random <= 0) {
+    if (roll <= 0) {
       return character;
     }
-
   }
 
   return characters[0];
 }
 
-// ==============================
-// CRIAR PLAYER
-// ==============================
-
 function createPlayer(id) {
-
   const character = randomCharacter();
 
-  const player = {
-
+  players[id] = {
     id,
 
     character: character.name,
@@ -599,83 +600,40 @@ function createPlayer(id) {
     nen: character.nen,
     nenType: character.type,
 
-    skills: character.skills,
+    skills: [...character.skills],
 
     currentBoss: null
-
   };
-
-  players[id] = player;
 
   saveDB();
 
-  return player;
+  return players[id];
 }
 
-// ==============================
-// LEVEL UP
-// ==============================
-
-function checkLevel(player) {
-
-  let leveled = false;
+function levelUp(player) {
+  let didLevel = false;
 
   while (player.xp >= player.level * 100) {
-
     player.xp -= player.level * 100;
 
     player.level++;
-
     player.upgradePoints += 3;
 
     player.maxHp += 20;
     player.hp = player.maxHp;
 
-    leveled = true;
+    didLevel = true;
   }
 
-  return leveled;
+  return didLevel;
 }
 
-// ==============================
-// EMBED PERSONAGEM
-// ==============================
+// ======================================================
+// EMBEDS
+// ======================================================
 
-function characterEmbed(player) {
-
-  const c = characters.find(x => x.name === player.character);
-
-  return new EmbedBuilder()
-    .setTitle(`🎭 ${c.name}`)
-    .setDescription(
-      `**Raridade:** ${c.rarity}\n` +
-      `🎯 Chance de sorteio: **${c.chance}%**\n` +
-      `💠 Potencial Nen: **${c.nen}%**\n` +
-      `🌀 Tipo: **${c.type}**`
-    )
-    .addFields(
-      {
-        name: "📊 Atributos",
-        value:
-          `❤️ Vida: **${player.hp}/${player.maxHp}**\n` +
-          `⚔️ Força: **${player.strength}**\n` +
-          `🛡️ Defesa: **${player.defense}**\n` +
-          `⚡ Stamina: **${player.stamina}**\n` +
-          `🧠 Inteligência: **${player.intelligence}**\n` +
-          `💨 Velocidade: **${player.speed}**`
-      },
-      {
-        name: "✨ Habilidades",
-        value: player.skills.map(s => `• ${s}`).join("\n")
-      }
-    );
-}
-
-// ==============================
-// PAINEL PRINCIPAL
-// ==============================
-
-function mainPanel(player) {
+function panelEmbed(player) {
+  const character = getCharacter(player.character);
 
   return new EmbedBuilder()
     .setTitle("⚔️ HUNTER × HUNTER RPG")
@@ -683,32 +641,71 @@ function mainPanel(player) {
       `🎭 **Personagem:** ${player.character}\n` +
       `⭐ **Raridade:** ${player.rarity}\n` +
       `🌀 **Nen:** ${player.nen}% — ${player.nenType}\n\n` +
-
       `📈 **Nível:** ${player.level}\n` +
       `✨ **XP:** ${player.xp}/${player.level * 100}\n` +
       `💰 **Dinheiro:** ¥${player.money}\n` +
-      `🔮 **Pontos de Upgrade:** ${player.upgradePoints}`
+      `🔮 **Pontos:** ${player.upgradePoints}`
     )
     .addFields({
-      name: "📊 Status",
+      name: "📊 ATRIBUTOS",
       value:
-        `❤️ ${player.hp}/${player.maxHp} HP\n` +
-        `⚔️ ${player.strength} Força\n` +
-        `🛡️ ${player.defense} Defesa\n` +
-        `⚡ ${player.stamina} Stamina\n` +
-        `🧠 ${player.intelligence} Inteligência\n` +
-        `💨 ${player.speed} Velocidade`
+        `❤️ Vida: **${player.hp}/${player.maxHp}**\n` +
+        `⚔️ Força: **${player.strength}**\n` +
+        `🛡️ Defesa: **${player.defense}**\n` +
+        `⚡ Stamina: **${player.stamina}**\n` +
+        `🧠 Inteligência: **${player.intelligence}**\n` +
+        `💨 Velocidade: **${player.speed}**`
+    })
+    .setFooter({
+      text: `Tipo de Nen: ${character.type}`
     });
 }
 
-// ==============================
-// BOTÕES
-// ==============================
+function characterEmbed(player) {
+  const character = getCharacter(player.character);
+
+  return new EmbedBuilder()
+    .setTitle(`🎭 ${character.name}`)
+    .setDescription(
+      `⭐ **Raridade:** ${character.rarity}\n` +
+      `🎯 **Chance:** ${character.chance}%\n` +
+      `💠 **Potencial Nen:** ${character.nen}%\n` +
+      `🌀 **Tipo:** ${character.type}`
+    )
+    .addFields({
+      name: "📊 Atributos",
+      value:
+        `❤️ Vida: **${character.hp}**\n` +
+        `⚔️ Força: **${character.strength}**\n` +
+        `🛡️ Defesa: **${character.defense}**\n` +
+        `⚡ Stamina: **${character.stamina}**\n` +
+        `🧠 Inteligência: **${character.intelligence}**\n` +
+        `💨 Velocidade: **${character.speed}**`
+    }, {
+      name: "✨ Habilidades",
+      value: character.skills.map(s => `• ${s}`).join("\n")
+    });
+}
+
+function bossEmbed(player, boss) {
+  return new EmbedBuilder()
+    .setTitle(`👹 ${boss.name}`)
+    .setDescription(
+      `🔓 **Nível necessário:** ${boss.minLevel}\n\n` +
+      `❤️ **HP:** ${boss.hp}\n` +
+      `⚔️ **Ataque:** ${boss.attack}\n` +
+      `🛡️ **Defesa:** ${boss.defense}\n\n` +
+      `✨ **XP:** ${boss.xp}\n` +
+      `💰 **Recompensa:** ¥${boss.money}`
+    );
+}
+
+// ======================================================
+// BOTÕES DO PAINEL
+// ======================================================
 
 function mainButtons() {
-
   return new ActionRowBuilder().addComponents(
-
     new ButtonBuilder()
       .setCustomId("character")
       .setLabel("🎭 Personagem")
@@ -727,116 +724,193 @@ function mainButtons() {
     new ButtonBuilder()
       .setCustomId("upgrades")
       .setLabel("📈 Upgrades")
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Success),
 
+    new ButtonBuilder()
+      .setCustomId("refresh")
+      .setLabel("🔄 Atualizar")
+      .setStyle(ButtonStyle.Secondary)
   );
-
 }
 
-// ==============================
-// BOT
-// ==============================
+// ======================================================
+// BOTÕES DE BATALHA
+// ======================================================
+
+function battleButtons() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("attack")
+      .setLabel("⚔️ Atacar")
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId("use_skill")
+      .setLabel("✨ Habilidade")
+      .setStyle(ButtonStyle.Primary),
+
+    new ButtonBuilder()
+      .setCustomId("defend")
+      .setLabel("🛡️ Defender")
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId("flee")
+      .setLabel("🏃 Fugir")
+      .setStyle(ButtonStyle.Secondary)
+  );
+}
+
+// ======================================================
+// READY
+// ======================================================
 
 client.once("ready", async () => {
-
-  console.log(`${client.user.tag} está online!`);
-
-  const commands = [
-
-    new SlashCommandBuilder()
-      .setName("rpg")
-      .setDescription("Abrir o Hunter x Hunter RPG")
-
-  ];
-
-  const rest = new REST({ version: "10" }).setToken(TOKEN);
-
-  await rest.put(
-    Routes.applicationCommands(CLIENT_ID),
-    { body: commands.map(c => c.toJSON()) }
-  );
-
-  console.log("Comando /rpg registrado.");
-
-});
-
-// ==============================
-// INTERAÇÕES
-// ==============================
-
-client.on("interactionCreate", async interaction => {
+  console.log(`✅ ${client.user.tag} está online!`);
 
   try {
+    const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-    // ==========================
+    const commands = [
+      new SlashCommandBuilder()
+        .setName("rpg")
+        .setDescription("Abrir o Hunter x Hunter RPG")
+    ];
+
+    await rest.put(
+      Routes.applicationCommands(CLIENT_ID),
+      {
+        body: commands.map(command => command.toJSON())
+      }
+    );
+
+    console.log("✅ /rpg registrado.");
+  } catch (error) {
+    console.error("Erro ao registrar comando:", error);
+  }
+});
+
+// ======================================================
+// INTERAÇÕES
+// ======================================================
+
+client.on("interactionCreate", async interaction => {
+  try {
+
+    // ==================================================
     // /RPG
-    // ==========================
+    // ==================================================
 
     if (interaction.isChatInputCommand()) {
 
-      if (interaction.commandName === "rpg") {
+      if (interaction.commandName !== "rpg") return;
 
-        if (!players[interaction.user.id]) {
-
-          const player = createPlayer(interaction.user.id);
-
-          return interaction.reply({
-            content: `🎲 **Seu personagem foi sorteado!**`,
-            embeds: [characterEmbed(player)],
-            components: [mainButtons()]
-          });
-
-        }
-
-        const player = players[interaction.user.id];
-
-        return interaction.reply({
-          embeds: [mainPanel(player)],
-          components: [mainButtons()]
-        });
-
-      }
-
-    }
-
-    // ==========================
-    // PERSONAGEM
-    // ==========================
-
-    if (interaction.isButton() && interaction.customId === "character") {
-
-      const player = players[interaction.user.id];
+      let player = players[interaction.user.id];
 
       if (!player) {
+        player = createPlayer(interaction.user.id);
+
         return interaction.reply({
-          content: "Use `/rpg` primeiro.",
-          ephemeral: true
+          content: "🎲 **Seu personagem foi sorteado!**",
+          embeds: [characterEmbed(player)],
+          components: [mainButtons()]
         });
       }
 
       return interaction.reply({
-        embeds: [characterEmbed(player)],
-        ephemeral: true
+        embeds: [panelEmbed(player)],
+        components: [mainButtons()]
       });
-
     }
 
-    // ==========================
+    const player = players[interaction.user.id];
+
+    if (!player) {
+      return interaction.reply({
+        content: "❌ Use `/rpg` primeiro.",
+        ephemeral: true
+      });
+    }
+
+    // ==================================================
+    // ATUALIZAR
+    // ==================================================
+
+    if (
+      interaction.isButton() &&
+      interaction.customId === "refresh"
+    ) {
+      return interaction.update({
+        embeds: [panelEmbed(player)],
+        components: [mainButtons()]
+      });
+    }
+
+    // ==================================================
+    // PERSONAGEM
+    // ==================================================
+
+    if (
+      interaction.isButton() &&
+      interaction.customId === "character"
+    ) {
+      return interaction.update({
+        embeds: [characterEmbed(player)],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("back_panel")
+              .setLabel("↩️ Voltar")
+              .setStyle(ButtonStyle.Secondary)
+          )
+        ]
+      });
+    }
+
+    // ==================================================
+    // VOLTAR
+    // ==================================================
+
+    if (
+      interaction.isButton() &&
+      interaction.customId === "back_panel"
+    ) {
+      return interaction.update({
+        embeds: [panelEmbed(player)],
+        components: [mainButtons()]
+      });
+    }
+
+    // ==================================================
     // BOSSES
-    // ==========================
+    // ==================================================
 
-    if (interaction.isButton() && interaction.customId === "bosses") {
-
-      const player = players[interaction.user.id];
+    if (
+      interaction.isButton() &&
+      interaction.customId === "bosses"
+    ) {
 
       const available = bosses.filter(
         boss => player.level >= boss.minLevel
       );
 
       if (!available.length) {
-        return interaction.reply({
-          content: "Você ainda não possui nenhum boss disponível.",
-          ephemeral: true
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("👹 BOSSES")
+              .setDescription(
+                "Você ainda não possui bosses disponíveis."
+              )
+          ],
+          components: [
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId("back_panel")
+                .setLabel("↩️ Voltar")
+                .setStyle(ButtonStyle.Secondary)
+            )
+          ]
         });
       }
 
@@ -848,42 +922,48 @@ client.on("interactionCreate", async interaction => {
 
       const menu = new StringSelectMenuBuilder()
         .setCustomId("boss_select")
-        .setPlaceholder("Escolha um boss para enfrentar")
+        .setPlaceholder("Escolha um boss")
         .addOptions(options);
 
-      return interaction.reply({
+      return interaction.update({
         embeds: [
           new EmbedBuilder()
-            .setTitle("👹 BOSSES")
+            .setTitle("👹 BOSSES DISPONÍVEIS")
             .setDescription(
-              `Seu nível: **${player.level}**\n\n` +
-              `Selecione um boss para iniciar a batalha.`
+              `📈 Seu nível: **${player.level}**\n\n` +
+              `Escolha um boss para começar a batalha.`
             )
         ],
         components: [
-          new ActionRowBuilder().addComponents(menu)
-        ],
-        ephemeral: true
+          new ActionRowBuilder().addComponents(menu),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("back_panel")
+              .setLabel("↩️ Voltar")
+              .setStyle(ButtonStyle.Secondary)
+          )
+        ]
       });
-
     }
 
-    // ==========================
-    // SELEÇÃO BOSS
-    // ==========================
+    // ==================================================
+    // ESCOLHER BOSS
+    // ==================================================
 
     if (
       interaction.isStringSelectMenu() &&
       interaction.customId === "boss_select"
     ) {
 
-      const player = players[interaction.user.id];
+      const boss = getBoss(interaction.values[0]);
 
-      const boss = bosses.find(
-        b => b.name === interaction.values[0]
-      );
-
-      if (!boss) return;
+      if (!boss) {
+        return interaction.update({
+          content: "❌ Boss não encontrado.",
+          embeds: [],
+          components: []
+        });
+      }
 
       player.currentBoss = {
         name: boss.name,
@@ -893,64 +973,41 @@ client.on("interactionCreate", async interaction => {
 
       saveDB();
 
-      const battleButtons = new ActionRowBuilder().addComponents(
-
-        new ButtonBuilder()
-          .setCustomId("attack")
-          .setLabel("⚔️ Atacar")
-          .setStyle(ButtonStyle.Danger),
-
-        new ButtonBuilder()
-          .setCustomId("use_skill")
-          .setLabel("✨ Habilidade")
-          .setStyle(ButtonStyle.Primary),
-
-        new ButtonBuilder()
-          .setCustomId("defend")
-          .setLabel("🛡️ Defender")
-          .setStyle(ButtonStyle.Success),
-
-        new ButtonBuilder()
-          .setCustomId("flee")
-          .setLabel("🏃 Fugir")
-          .setStyle(ButtonStyle.Secondary)
-
-      );
-
       return interaction.update({
+        content: null,
         embeds: [
           new EmbedBuilder()
             .setTitle(`⚔️ BATALHA — ${boss.name}`)
             .setDescription(
-              `👤 **${player.character}**\n` +
+              `🎭 **${player.character}**\n` +
               `❤️ Seu HP: **${player.hp}/${player.maxHp}**\n\n` +
               `👹 **${boss.name}**\n` +
               `❤️ HP: **${boss.hp}/${boss.hp}**`
             )
         ],
-        components: [battleButtons]
+        components: [battleButtons()]
       });
-
     }
 
-    // ==========================
+    // ==================================================
     // ATAQUE
-    // ==========================
+    // ==================================================
 
-    if (interaction.isButton() && interaction.customId === "attack") {
-
-      const player = players[interaction.user.id];
+    if (
+      interaction.isButton() &&
+      interaction.customId === "attack"
+    ) {
 
       if (!player.currentBoss) {
-        return interaction.reply({
-          content: "Você não está em uma batalha.",
-          ephemeral: true
+        return interaction.update({
+          embeds: [panelEmbed(player)],
+          components: [mainButtons()]
         });
       }
 
-      const boss = bosses.find(
-        b => b.name === player.currentBoss.name
-      );
+      const boss = getBoss(player.currentBoss.name);
+
+      if (!boss) return;
 
       const damage = Math.floor(
         player.strength * 0.7 +
@@ -960,12 +1017,13 @@ client.on("interactionCreate", async interaction => {
 
       player.currentBoss.hp -= damage;
 
+      // VITÓRIA
       if (player.currentBoss.hp <= 0) {
 
         player.xp += boss.xp;
         player.money += boss.money;
 
-        const leveled = checkLevel(player);
+        const leveled = levelUp(player);
 
         player.currentBoss = null;
 
@@ -977,30 +1035,31 @@ client.on("interactionCreate", async interaction => {
               .setTitle("🏆 VITÓRIA!")
               .setDescription(
                 `Você derrotou **${boss.name}**!\n\n` +
-                `⚔️ Dano causado: **${damage}**\n` +
-                `✨ XP ganho: **+${boss.xp}**\n` +
+                `⚔️ Dano: **${damage}**\n` +
+                `✨ XP: **+${boss.xp}**\n` +
                 `💰 Dinheiro: **+¥${boss.money}**` +
                 (leveled
-                  ? `\n\n🎉 **VOCÊ SUBIU DE NÍVEL!**`
+                  ? `\n\n🎉 **LEVEL UP!**\n📈 Agora você é nível **${player.level}**!`
                   : "")
               )
           ],
           components: [mainButtons()]
         });
-
       }
 
-      const bossDamage = Math.floor(
-        boss.attack * (0.7 + Math.random() * 0.4)
-      );
-
-      const reducedDamage = Math.max(
+      // ATAQUE DO BOSS
+      const bossDamage = Math.max(
         1,
-        bossDamage - player.defense * 0.25
+        Math.floor(
+          boss.attack -
+          player.defense * 0.25 +
+          Math.random() * 20
+        )
       );
 
-      player.hp -= Math.floor(reducedDamage);
+      player.hp -= bossDamage;
 
+      // DERROTA
       if (player.hp <= 0) {
 
         player.hp = player.maxHp;
@@ -1014,12 +1073,12 @@ client.on("interactionCreate", async interaction => {
               .setTitle("💀 DERROTA")
               .setDescription(
                 `Você foi derrotado por **${boss.name}**.\n\n` +
-                `❤️ Seu HP foi restaurado.`
+                `❤️ Seu HP foi restaurado.\n` +
+                `📈 Seu nível e XP foram mantidos.`
               )
           ],
           components: [mainButtons()]
         });
-
       }
 
       saveDB();
@@ -1029,65 +1088,42 @@ client.on("interactionCreate", async interaction => {
           new EmbedBuilder()
             .setTitle(`⚔️ BATALHA — ${boss.name}`)
             .setDescription(
-              `👤 **${player.character}**\n` +
-              `❤️ HP: **${player.hp}/${player.maxHp}**\n\n` +
+              `🎭 **${player.character}**\n` +
+              `❤️ Seu HP: **${player.hp}/${player.maxHp}**\n\n` +
               `👹 **${boss.name}**\n` +
-              `❤️ HP: **${Math.max(0, player.currentBoss.hp)}/${boss.hp}**\n\n` +
+              `❤️ HP: **${player.currentBoss.hp}/${boss.hp}**\n\n` +
               `⚔️ Você causou **${damage}** de dano.\n` +
-              `💥 O boss causou **${Math.floor(reducedDamage)}** de dano.`
+              `💥 O boss causou **${bossDamage}** de dano.`
             )
         ],
-        components: [
-          new ActionRowBuilder().addComponents(
-
-            new ButtonBuilder()
-              .setCustomId("attack")
-              .setLabel("⚔️ Atacar")
-              .setStyle(ButtonStyle.Danger),
-
-            new ButtonBuilder()
-              .setCustomId("use_skill")
-              .setLabel("✨ Habilidade")
-              .setStyle(ButtonStyle.Primary),
-
-            new ButtonBuilder()
-              .setCustomId("defend")
-              .setLabel("🛡️ Defender")
-              .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-              .setCustomId("flee")
-              .setLabel("🏃 Fugir")
-              .setStyle(ButtonStyle.Secondary)
-
-          )
-        ]
+        components: [battleButtons()]
       });
-
     }
 
-    // ==========================
+    // ==================================================
     // DEFENDER
-    // ==========================
+    // ==================================================
 
-    if (interaction.isButton() && interaction.customId === "defend") {
-
-      const player = players[interaction.user.id];
+    if (
+      interaction.isButton() &&
+      interaction.customId === "defend"
+    ) {
 
       if (!player.currentBoss) {
-        return interaction.reply({
-          content: "Você não está em uma batalha.",
-          ephemeral: true
+        return interaction.update({
+          embeds: [panelEmbed(player)],
+          components: [mainButtons()]
         });
       }
 
-      const boss = bosses.find(
-        b => b.name === player.currentBoss.name
-      );
+      const boss = getBoss(player.currentBoss.name);
 
       const damage = Math.max(
         1,
-        Math.floor(boss.attack * 0.25 - player.defense * 0.1)
+        Math.floor(
+          boss.attack * 0.25 -
+          player.defense * 0.1
+        )
       );
 
       player.hp -= damage;
@@ -1104,13 +1140,12 @@ client.on("interactionCreate", async interaction => {
             new EmbedBuilder()
               .setTitle("💀 DERROTA")
               .setDescription(
-                `O boss conseguiu derrotar você.\n\n` +
-                `❤️ Seu HP foi restaurado.`
+                `Você não conseguiu resistir ao ataque.\n\n` +
+                `❤️ HP restaurado.`
               )
           ],
           components: [mainButtons()]
         });
-
       }
 
       saveDB();
@@ -1120,47 +1155,23 @@ client.on("interactionCreate", async interaction => {
           new EmbedBuilder()
             .setTitle(`🛡️ DEFESA — ${boss.name}`)
             .setDescription(
-              `Você se protegeu do ataque.\n\n` +
+              `Você reduziu o dano recebido.\n\n` +
               `❤️ HP: **${player.hp}/${player.maxHp}**\n` +
-              `👹 Boss: **${player.currentBoss.hp}/${boss.hp} HP**`
+              `👹 ${boss.name}: **${player.currentBoss.hp}/${boss.hp} HP**`
             )
         ],
-        components: [
-          new ActionRowBuilder().addComponents(
-
-            new ButtonBuilder()
-              .setCustomId("attack")
-              .setLabel("⚔️ Atacar")
-              .setStyle(ButtonStyle.Danger),
-
-            new ButtonBuilder()
-              .setCustomId("use_skill")
-              .setLabel("✨ Habilidade")
-              .setStyle(ButtonStyle.Primary),
-
-            new ButtonBuilder()
-              .setCustomId("defend")
-              .setLabel("🛡️ Defender")
-              .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-              .setCustomId("flee")
-              .setLabel("🏃 Fugir")
-              .setStyle(ButtonStyle.Secondary)
-
-          )
-        ]
+        components: [battleButtons()]
       });
-
     }
 
-    // ==========================
+    // ==================================================
     // FUGIR
-    // ==========================
+    // ==================================================
 
-    if (interaction.isButton() && interaction.customId === "flee") {
-
-      const player = players[interaction.user.id];
+    if (
+      interaction.isButton() &&
+      interaction.customId === "flee"
+    ) {
 
       player.currentBoss = null;
 
@@ -1170,168 +1181,61 @@ client.on("interactionCreate", async interaction => {
         embeds: [
           new EmbedBuilder()
             .setTitle("🏃 BATALHA ENCERRADA")
-            .setDescription("Você fugiu da batalha.")
+            .setDescription(
+              `Você fugiu da batalha.\n\n` +
+              `Seu painel foi atualizado.`
+            )
         ],
         components: [mainButtons()]
       });
-
     }
 
-    // ==========================
-    // UPGRADES
-    // ==========================
-
-    if (interaction.isButton() && interaction.customId === "upgrades") {
-
-      const player = players[interaction.user.id];
-
-      const row = new ActionRowBuilder().addComponents(
-
-        new ButtonBuilder()
-          .setCustomId("up_hp")
-          .setLabel("❤️ Vida")
-          .setStyle(ButtonStyle.Danger),
-
-        new ButtonBuilder()
-          .setCustomId("up_str")
-          .setLabel("⚔️ Força")
-          .setStyle(ButtonStyle.Primary),
-
-        new ButtonBuilder()
-          .setCustomId("up_def")
-          .setLabel("🛡️ Defesa")
-          .setStyle(ButtonStyle.Success),
-
-        new ButtonBuilder()
-          .setCustomId("up_sta")
-          .setLabel("⚡ Stamina")
-          .setStyle(ButtonStyle.Secondary),
-
-        new ButtonBuilder()
-          .setCustomId("up_speed")
-          .setLabel("💨 Velocidade")
-          .setStyle(ButtonStyle.Secondary)
-
-      );
-
-      return interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("📈 UPGRADES")
-            .setDescription(
-              `Pontos disponíveis: **${player.upgradePoints}**\n\n` +
-              `❤️ Vida: ${player.maxHp}\n` +
-              `⚔️ Força: ${player.strength}\n` +
-              `🛡️ Defesa: ${player.defense}\n` +
-              `⚡ Stamina: ${player.stamina}\n` +
-              `💨 Velocidade: ${player.speed}`
-            )
-        ],
-        components: [row],
-        ephemeral: true
-      });
-
-    }
-
-    // ==========================
-    // APLICA UPGRADES
-    // ==========================
-
-    const upgradeMap = {
-
-      up_hp: "hp",
-      up_str: "strength",
-      up_def: "defense",
-      up_sta: "stamina",
-      up_speed: "speed"
-
-    };
+    // ==================================================
+    // HABILIDADES
+    // ==================================================
 
     if (
       interaction.isButton() &&
-      upgradeMap[interaction.customId]
+      interaction.customId === "skills"
     ) {
 
-      const player = players[interaction.user.id];
-
-      if (player.upgradePoints <= 0) {
-
-        return interaction.reply({
-          content: "❌ Você não possui pontos de upgrade.",
-          ephemeral: true
-        });
-
-      }
-
-      const stat = upgradeMap[interaction.customId];
-
-      player.upgradePoints--;
-
-      if (stat === "hp") {
-
-        player.maxHp += 25;
-        player.hp += 25;
-
-      } else {
-
-        player[stat] += 5;
-
-      }
-
-      saveDB();
-
       return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("📈 UPGRADE REALIZADO!")
-            .setDescription(
-              `Você melhorou **${stat}**!\n\n` +
-              `⭐ Pontos restantes: **${player.upgradePoints}**`
-            )
-        ],
-        components: []
-      });
-
-    }
-
-    // ==========================
-    // HABILIDADES
-    // ==========================
-
-    if (interaction.isButton() && interaction.customId === "skills") {
-
-      const player = players[interaction.user.id];
-
-      return interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setTitle("✨ HABILIDADES")
             .setDescription(
               player.skills.length
-                ? player.skills.map(s => `🔮 **${s}**`).join("\n")
-                : "Você ainda não possui habilidades."
+                ? player.skills
+                    .map(skill => `🔮 **${skill}**`)
+                    .join("\n")
+                : "Você não possui habilidades."
             )
         ],
-        ephemeral: true
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("back_panel")
+              .setLabel("↩️ Voltar")
+              .setStyle(ButtonStyle.Secondary)
+          )
+        ]
       });
-
     }
 
-    // ==========================
-    // HABILIDADE DURANTE BATALHA
-    // ==========================
+    // ==================================================
+    // USAR HABILIDADE
+    // ==================================================
 
-    if (interaction.isButton() && interaction.customId === "use_skill") {
-
-      const player = players[interaction.user.id];
+    if (
+      interaction.isButton() &&
+      interaction.customId === "use_skill"
+    ) {
 
       if (!player.currentBoss) {
-
-        return interaction.reply({
-          content: "Você não está em uma batalha.",
-          ephemeral: true
+        return interaction.update({
+          embeds: [panelEmbed(player)],
+          components: [mainButtons()]
         });
-
       }
 
       const menu = new StringSelectMenuBuilder()
@@ -1345,40 +1249,76 @@ client.on("interactionCreate", async interaction => {
           }))
         );
 
-      return interaction.reply({
-        content: "✨ **Escolha sua habilidade:**",
-        components: [
-          new ActionRowBuilder().addComponents(menu)
+      return interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("✨ HABILIDADES DE BATALHA")
+            .setDescription(
+              `Escolha uma habilidade para atacar **${player.currentBoss.name}**.`
+            )
         ],
-        ephemeral: true
+        components: [
+          new ActionRowBuilder().addComponents(menu),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("back_battle")
+              .setLabel("↩️ Voltar para batalha")
+              .setStyle(ButtonStyle.Secondary)
+          )
+        ]
       });
-
     }
 
-    // ==========================
-    // USAR HABILIDADE
-    // ==========================
+    // ==================================================
+    // VOLTAR PARA BATALHA
+    // ==================================================
+
+    if (
+      interaction.isButton() &&
+      interaction.customId === "back_battle"
+    ) {
+
+      if (!player.currentBoss) {
+        return interaction.update({
+          embeds: [panelEmbed(player)],
+          components: [mainButtons()]
+        });
+      }
+
+      const boss = getBoss(player.currentBoss.name);
+
+      return interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`⚔️ BATALHA — ${boss.name}`)
+            .setDescription(
+              `🎭 **${player.character}**\n` +
+              `❤️ Seu HP: **${player.hp}/${player.maxHp}**\n\n` +
+              `👹 **${boss.name}**\n` +
+              `❤️ HP: **${player.currentBoss.hp}/${boss.hp}**`
+            )
+        ],
+        components: [battleButtons()]
+      });
+    }
+
+    // ==================================================
+    // HABILIDADE SELECIONADA
+    // ==================================================
 
     if (
       interaction.isStringSelectMenu() &&
       interaction.customId === "battle_skill"
     ) {
 
-      const player = players[interaction.user.id];
-
       if (!player.currentBoss) {
-
         return interaction.update({
-          content: "❌ A batalha já terminou.",
-          components: []
+          embeds: [panelEmbed(player)],
+          components: [mainButtons()]
         });
-
       }
 
-      const boss = bosses.find(
-        b => b.name === player.currentBoss.name
-      );
-
+      const boss = getBoss(player.currentBoss.name);
       const skill = interaction.values[0];
 
       const damage = Math.floor(
@@ -1389,61 +1329,245 @@ client.on("interactionCreate", async interaction => {
 
       player.currentBoss.hp -= damage;
 
+      // VITÓRIA
       if (player.currentBoss.hp <= 0) {
 
         player.xp += boss.xp;
         player.money += boss.money;
 
-        const leveled = checkLevel(player);
+        const leveled = levelUp(player);
 
         player.currentBoss = null;
 
         saveDB();
 
         return interaction.update({
-          content:
-            `🏆 **VITÓRIA!**\n\n` +
-            `✨ Você usou **${skill}**.\n` +
-            `💥 Dano: **${damage}**\n` +
-            `👹 **${boss.name}** foi derrotado!\n\n` +
-            `✨ XP: **+${boss.xp}**\n` +
-            `💰 Dinheiro: **+¥${boss.money}**` +
-            (leveled ? `\n\n🎉 **LEVEL UP!**` : ""),
-          components: []
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("🏆 VITÓRIA!")
+              .setDescription(
+                `✨ Você usou **${skill}**!\n` +
+                `💥 Dano: **${damage}**\n\n` +
+                `👹 **${boss.name}** foi derrotado!\n\n` +
+                `✨ XP: **+${boss.xp}**\n` +
+                `💰 Dinheiro: **+¥${boss.money}**` +
+                (leveled
+                  ? `\n\n🎉 **LEVEL UP!**\n📈 Agora você é nível **${player.level}**!`
+                  : "")
+              )
+          ],
+          components: [mainButtons()]
         });
+      }
 
+      // BOSS CONTRA-ATACA
+      const bossDamage = Math.max(
+        1,
+        Math.floor(
+          boss.attack -
+          player.defense * 0.2 +
+          Math.random() * 20
+        )
+      );
+
+      player.hp -= bossDamage;
+
+      if (player.hp <= 0) {
+
+        player.hp = player.maxHp;
+        player.currentBoss = null;
+
+        saveDB();
+
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("💀 DERROTA")
+              .setDescription(
+                `O boss derrotou você após sua habilidade.\n\n` +
+                `❤️ Seu HP foi restaurado.`
+              )
+          ],
+          components: [mainButtons()]
+        });
       }
 
       saveDB();
 
       return interaction.update({
-        content:
-          `✨ **${skill}**!\n\n` +
-          `💥 Dano causado: **${damage}**\n` +
-          `👹 ${boss.name}: **${Math.max(
-            0,
-            player.currentBoss.hp
-          )}/${boss.hp} HP**`,
-        components: []
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`⚔️ BATALHA — ${boss.name}`)
+            .setDescription(
+              `✨ **${skill}** causou **${damage}** de dano!\n\n` +
+              `👤 **${player.character}**\n` +
+              `❤️ HP: **${player.hp}/${player.maxHp}**\n\n` +
+              `👹 **${boss.name}**\n` +
+              `❤️ HP: **${player.currentBoss.hp}/${boss.hp}**\n\n` +
+              `💥 O boss causou **${bossDamage}** de dano.`
+            )
+        ],
+        components: [battleButtons()]
       });
+    }
 
+    // ==================================================
+    // UPGRADES
+    // ==================================================
+
+    if (
+      interaction.isButton() &&
+      interaction.customId === "upgrades"
+    ) {
+
+      return interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("📈 UPGRADES")
+            .setDescription(
+              `🔮 **Pontos disponíveis:** ${player.upgradePoints}\n\n` +
+              `❤️ Vida: **${player.maxHp}**\n` +
+              `⚔️ Força: **${player.strength}**\n` +
+              `🛡️ Defesa: **${player.defense}**\n` +
+              `⚡ Stamina: **${player.stamina}**\n` +
+              `💨 Velocidade: **${player.speed}**`
+            )
+        ],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("up_hp")
+              .setLabel("❤️ Vida")
+              .setStyle(ButtonStyle.Danger),
+
+            new ButtonBuilder()
+              .setCustomId("up_str")
+              .setLabel("⚔️ Força")
+              .setStyle(ButtonStyle.Primary),
+
+            new ButtonBuilder()
+              .setCustomId("up_def")
+              .setLabel("🛡️ Defesa")
+              .setStyle(ButtonStyle.Success),
+
+            new ButtonBuilder()
+              .setCustomId("up_sta")
+              .setLabel("⚡ Stamina")
+              .setStyle(ButtonStyle.Secondary),
+
+            new ButtonBuilder()
+              .setCustomId("up_speed")
+              .setLabel("💨 Velocidade")
+              .setStyle(ButtonStyle.Secondary)
+          ),
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("back_panel")
+              .setLabel("↩️ Voltar")
+              .setStyle(ButtonStyle.Secondary)
+          )
+        ]
+      });
+    }
+
+    // ==================================================
+    // UPGRADES INDIVIDUAIS
+    // ==================================================
+
+    const upgradeMap = {
+      up_hp: "hp",
+      up_str: "strength",
+      up_def: "defense",
+      up_sta: "stamina",
+      up_speed: "speed"
+    };
+
+    if (
+      interaction.isButton() &&
+      upgradeMap[interaction.customId]
+    ) {
+
+      if (player.upgradePoints <= 0) {
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("❌ SEM PONTOS")
+              .setDescription(
+                "Você não possui pontos de upgrade."
+              )
+          ],
+          components: [
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId("back_panel")
+                .setLabel("↩️ Voltar")
+                .setStyle(ButtonStyle.Secondary)
+            )
+          ]
+        });
+      }
+
+      const stat = upgradeMap[interaction.customId];
+
+      player.upgradePoints--;
+
+      if (stat === "hp") {
+        player.maxHp += 25;
+        player.hp += 25;
+      } else {
+        player[stat] += 5;
+      }
+
+      saveDB();
+
+      return interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("📈 UPGRADE REALIZADO")
+            .setDescription(
+              `Você aumentou **${stat}** em **+5**.\n\n` +
+              `🔮 Pontos restantes: **${player.upgradePoints}**`
+            )
+        ],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("upgrades")
+              .setLabel("📈 Continuar Upgrades")
+              .setStyle(ButtonStyle.Success),
+
+            new ButtonBuilder()
+              .setCustomId("back_panel")
+              .setLabel("↩️ Painel")
+              .setStyle(ButtonStyle.Secondary)
+          )
+        ]
+      });
     }
 
   } catch (error) {
 
-    console.error(error);
+    console.error("❌ ERRO:", error);
 
-    if (!interaction.replied && !interaction.deferred) {
+    try {
 
-      await interaction.reply({
-        content: "❌ Ocorreu um erro no RPG.",
-        ephemeral: true
-      });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          content: "❌ Ocorreu um erro no RPG."
+        });
+      } else {
+        await interaction.reply({
+          content: "❌ Ocorreu um erro no RPG.",
+          ephemeral: true
+        });
+      }
 
-    }
-
+    } catch {}
   }
-
 });
+
+// ======================================================
+// LOGIN
+// ======================================================
 
 client.login(TOKEN);
