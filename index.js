@@ -1,18 +1,18 @@
-const {
-  Client,
-  GatewayIntentBits,
-  REST,
-  Routes,
-  SlashCommandBuilder,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  StringSelectMenuBuilder
+ const {
+    Client,
+    GatewayIntentBits,
+    REST,
+    Routes,
+    SlashCommandBuilder,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    StringSelectMenuBuilder,
+    PermissionFlagsBits
 } = require("discord.js");
 
 const fs = require("fs");
-const path = require("path");
 
 // ======================================================
 // CONFIGURAÇÃO
@@ -20,1261 +20,602 @@ const path = require("path");
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
-
-// Coloque os IDs dos administradores separados por vírgula.
-// Exemplo: ADMIN_IDS=123456789,987654321
-const ADMIN_IDS = (process.env.ADMIN_IDS || "")
-  .split(",")
-  .map(x => x.trim())
-  .filter(Boolean);
+const OWNER_ID = process.env.OWNER_ID;
 
 if (!TOKEN || !CLIENT_ID) {
-  console.log("ERRO: Configure TOKEN e CLIENT_ID nas variáveis.");
-  process.exit(1);
+    console.error("❌ TOKEN ou CLIENT_ID não configurado.");
+    process.exit(1);
 }
 
-const DATA_FILE = path.join(__dirname, "players.json");
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds]
+});
 
-if (!fs.existsSync(DATA_FILE)) {
-  fs.writeFileSync(DATA_FILE, "{}");
+const PLAYERS_FILE = "./players.json";
+
+// ======================================================
+// BANCO DE DADOS
+// ======================================================
+
+if (!fs.existsSync(PLAYERS_FILE)) {
+    fs.writeFileSync(PLAYERS_FILE, "{}");
 }
 
 function loadPlayers() {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-  } catch {
-    return {};
-  }
+    try {
+        return JSON.parse(fs.readFileSync(PLAYERS_FILE, "utf8"));
+    } catch {
+        return {};
+    }
 }
 
-function savePlayers() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(players, null, 2));
+function savePlayers(players) {
+    fs.writeFileSync(
+        PLAYERS_FILE,
+        JSON.stringify(players, null, 2)
+    );
 }
 
 const players = loadPlayers();
-
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
 
 // ======================================================
 // PERSONAGENS
 // ======================================================
 
 const characters = [
-  {
-    id: "leorio",
-    name: "Leorio",
-    rarity: "Comum",
-    chance: 10,
-    value: 5000,
-    hp: 900,
-    strength: 45,
-    defense: 40,
-    stamina: 60,
-    intelligence: 70,
-    speed: 45,
-    skills: [
-      ["Soco Médico", 25, 1500, 1],
-      ["Punch Remoto", 40, 3500, 5],
-      ["Remote Punch Avançado", 65, 7000, 15]
-    ]
-  },
-  {
-    id: "kalluto",
-    name: "Kalluto Zoldyck",
-    rarity: "Comum",
-    chance: 8,
-    value: 7000,
-    hp: 850,
-    strength: 40,
-    defense: 45,
-    stamina: 65,
-    intelligence: 70,
-    speed: 75,
-    skills: [
-      ["Manipulação de Papel", 30, 2000, 1],
-      ["Rastreador de Papel", 45, 4000, 8],
-      ["Tempestade de Papéis", 70, 9000, 18]
-    ]
-  },
-  {
-    id: "zushi",
-    name: "Zushi",
-    rarity: "Comum",
-    chance: 7,
-    value: 6000,
-    hp: 850,
-    strength: 45,
-    defense: 50,
-    stamina: 60,
-    intelligence: 65,
-    speed: 50,
-    skills: [
-      ["Shu", 25, 1500, 1],
-      ["Ren Básico", 40, 3500, 7],
-      ["Kō Avançado", 60, 7000, 15]
-    ]
-  },
-  {
-    id: "hanzo",
-    name: "Hanzo",
-    rarity: "Comum",
-    chance: 6,
-    value: 9000,
-    hp: 1000,
-    strength: 60,
-    defense: 55,
-    stamina: 75,
-    intelligence: 70,
-    speed: 90,
-    skills: [
-      ["Ninjutsu", 35, 2500, 1],
-      ["Clone Ninja", 55, 5500, 10],
-      ["Técnica Ninja Suprema", 80, 12000, 22]
-    ]
-  },
-  {
-    id: "ponzu",
-    name: "Ponzu",
-    rarity: "Comum",
-    chance: 5,
-    value: 4500,
-    hp: 750,
-    strength: 35,
-    defense: 35,
-    stamina: 55,
-    intelligence: 65,
-    speed: 50,
-    skills: [
-      ["Abelhas", 20, 1200, 1],
-      ["Ataque de Abelhas", 35, 3000, 6],
-      ["Enxame", 55, 6500, 14]
-    ]
-  },
-  {
-    id: "shizuku",
-    name: "Shizuku",
-    rarity: "Incomum",
-    chance: 5,
-    value: 12000,
-    hp: 1050,
-    strength: 60,
-    defense: 60,
-    stamina: 70,
-    intelligence: 75,
-    speed: 55,
-    skills: [
-      ["Blinky", 35, 3000, 1],
-      ["Limpeza Total", 55, 6500, 10],
-      ["Sucção Brutal", 80, 13000, 22]
-    ]
-  },
-  {
-    id: "shalnark",
-    name: "Shalnark",
-    rarity: "Incomum",
-    chance: 4.5,
-    value: 14000,
-    hp: 1000,
-    strength: 55,
-    defense: 55,
-    stamina: 70,
-    intelligence: 90,
-    speed: 65,
-    skills: [
-      ["Antena", 30, 2500, 1],
-      ["Autopilot", 65, 8000, 12],
-      ["Autopilot Supremo", 90, 16000, 25]
-    ]
-  },
-  {
-    id: "machi",
-    name: "Machi",
-    rarity: "Incomum",
-    chance: 4,
-    value: 16000,
-    hp: 1100,
-    strength: 65,
-    defense: 70,
-    stamina: 80,
-    intelligence: 80,
-    speed: 75,
-    skills: [
-      ["Fios de Nen", 35, 3000, 1],
-      ["Costura de Nen", 60, 7000, 10],
-      ["Fios Mortais", 90, 15000, 24]
-    ]
-  },
-  {
-    id: "phinks",
-    name: "Phinks",
-    rarity: "Incomum",
-    chance: 3.8,
-    value: 18000,
-    hp: 1200,
-    strength: 90,
-    defense: 75,
-    stamina: 80,
-    intelligence: 55,
-    speed: 65,
-    skills: [
-      ["Soco Reforçado", 40, 3500, 1],
-      ["Ripper Cyclotron", 75, 9000, 12],
-      ["Ripper Cyclotron Máximo", 110, 18000, 28]
-    ]
-  },
-  {
-    id: "franklin",
-    name: "Franklin",
-    rarity: "Incomum",
-    chance: 3.5,
-    value: 19000,
-    hp: 1250,
-    strength: 80,
-    defense: 75,
-    stamina: 85,
-    intelligence: 55,
-    speed: 50,
-    skills: [
-      ["Double Machine Gun", 40, 3500, 1],
-      ["Rajada de Nen", 65, 7000, 10],
-      ["Metralhadora Suprema", 100, 16000, 25]
-    ]
-  },
-  {
-    id: "nobunaga",
-    name: "Nobunaga",
-    rarity: "Incomum",
-    chance: 3.5,
-    value: 19000,
-    hp: 1150,
-    strength: 80,
-    defense: 70,
-    stamina: 75,
-    intelligence: 65,
-    speed: 80,
-    skills: [
-      ["Iai", 45, 4000, 1],
-      ["Corte de Nen", 70, 8000, 12],
-      ["Iai Supremo", 105, 17000, 28]
-    ]
-  },
-  {
-    id: "bonolenov",
-    name: "Bonolenov",
-    rarity: "Incomum",
-    chance: 3,
-    value: 20000,
-    hp: 1150,
-    strength: 75,
-    defense: 70,
-    stamina: 80,
-    intelligence: 70,
-    speed: 65,
-    skills: [
-      ["Battle Cantabile", 40, 3500, 1],
-      ["Jupiter", 70, 8500, 12],
-      ["Dance Suprema", 105, 18000, 30]
-    ]
-  },
-  {
-    id: "pakunoda",
-    name: "Pakunoda",
-    rarity: "Incomum",
-    chance: 3,
-    value: 15000,
-    hp: 950,
-    strength: 50,
-    defense: 50,
-    stamina: 65,
-    intelligence: 90,
-    speed: 55,
-    skills: [
-      ["Memory Bomb", 35, 3000, 1],
-      ["Memory Scan", 50, 5500, 8],
-      ["Memory Bullet", 75, 11000, 20]
-    ]
-  },
-  {
-    id: "kortopi",
-    name: "Kortopi",
-    rarity: "Incomum",
-    chance: 2.5,
-    value: 17000,
-    hp: 850,
-    strength: 35,
-    defense: 45,
-    stamina: 60,
-    intelligence: 95,
-    speed: 45,
-    skills: [
-      ["Gallery Fake", 30, 3000, 1],
-      ["Cópia Perfeita", 50, 6000, 10],
-      ["Cópia em Massa", 75, 12000, 22]
-    ]
-  },
-  {
-    id: "gon",
-    name: "Gon Freecss",
-    rarity: "Raro",
-    chance: 4,
-    value: 25000,
-    hp: 1300,
-    strength: 95,
-    defense: 80,
-    stamina: 90,
-    intelligence: 55,
-    speed: 75,
-    skills: [
-      ["Pedra", 60, 8000, 10],
-      ["Tesoura", 50, 6000, 8],
-      ["Papel", 40, 5000, 6],
-      ["Jajanken Supremo", 110, 25000, 30]
-    ]
-  },
-  {
-    id: "killua",
-    name: "Killua Zoldyck",
-    rarity: "Raro",
-    chance: 4,
-    value: 28000,
-    hp: 1200,
-    strength: 80,
-    defense: 70,
-    stamina: 100,
-    intelligence: 85,
-    speed: 110,
-    skills: [
-      ["Palma Elétrica", 30, 3000, 5],
-      ["Eletricidade", 45, 6000, 10],
-      ["Thunderbolt", 60, 10000, 18],
-      ["Godspeed", 90, 18000, 30],
-      ["Godspeed Supremo", 125, 35000, 50]
-    ]
-  },
-  {
-    id: "kurapika",
-    name: "Kurapika",
-    rarity: "Raro",
-    chance: 3.5,
-    value: 30000,
-    hp: 1150,
-    strength: 70,
-    defense: 75,
-    stamina: 80,
-    intelligence: 100,
-    speed: 70,
-    skills: [
-      ["Dowsing Chain", 40, 5000, 5],
-      ["Holy Chain", 55, 8000, 12],
-      ["Chain Jail", 75, 15000, 22],
-      ["Judgment Chain", 90, 22000, 32],
-      ["Emperor Time", 120, 40000, 50]
-    ]
-  },
-  {
-    id: "uvogin",
-    name: "Uvogin",
-    rarity: "Raro",
-    chance: 3,
-    value: 32000,
-    hp: 1600,
-    strength: 125,
-    defense: 100,
-    stamina: 100,
-    intelligence: 45,
-    speed: 55,
-    skills: [
-      ["Soco Brutal", 45, 4000, 1],
-      ["Rugido", 55, 6000, 8],
-      ["Big Bang Impact", 90, 14000, 20],
-      ["Big Bang Impact Supremo", 140, 35000, 45]
-    ]
-  },
-  {
-    id: "feitan",
-    name: "Feitan",
-    rarity: "Raro",
-    chance: 2.8,
-    value: 35000,
-    hp: 1100,
-    strength: 85,
-    defense: 70,
-    stamina: 90,
-    intelligence: 80,
-    speed: 115,
-    skills: [
-      ["Sword Slash", 40, 4000, 1],
-      ["Ko", 65, 8000, 10],
-      ["Pain Packer", 100, 18000, 25],
-      ["Rising Sun", 150, 45000, 50]
-    ]
-  },
-  {
-    id: "knuckle",
-    name: "Knuckle Bine",
-    rarity: "Raro",
-    chance: 2.7,
-    value: 33000,
-    hp: 1250,
-    strength: 80,
-    defense: 80,
-    stamina: 90,
-    intelligence: 85,
-    speed: 65,
-    skills: [
-      ["Hakoware", 40, 5000, 5],
-      ["Juros", 65, 9000, 15],
-      ["APR", 85, 16000, 28]
-    ]
-  },
-  {
-    id: "shoot",
-    name: "Shoot McMahon",
-    rarity: "Raro",
-    chance: 2.5,
-    value: 30000,
-    hp: 1100,
-    strength: 65,
-    defense: 75,
-    stamina: 85,
-    intelligence: 90,
-    speed: 75,
-    skills: [
-      ["Hotel Rafflesia", 40, 5000, 5],
-      ["Mãos Flutuantes", 60, 8000, 12],
-      ["Captura Total", 90, 17000, 28]
-    ]
-  },
-  {
-    id: "morel",
-    name: "Morel",
-    rarity: "Raro",
-    chance: 2.3,
-    value: 38000,
-    hp: 1300,
-    strength: 70,
-    defense: 80,
-    stamina: 110,
-    intelligence: 100,
-    speed: 55,
-    skills: [
-      ["Deep Purple", 40, 5000, 5],
-      ["Smoke Soldier", 60, 9000, 12],
-      ["Smoky Jail", 85, 16000, 25],
-      ["Deep Purple Supremo", 120, 30000, 45]
-    ]
-  },
-  {
-    id: "palm",
-    name: "Palm Siberia",
-    rarity: "Raro",
-    chance: 2,
-    value: 32000,
-    hp: 1050,
-    strength: 60,
-    defense: 65,
-    stamina: 75,
-    intelligence: 90,
-    speed: 60,
-    skills: [
-      ["Wink Blue", 35, 4000, 1],
-      ["Black Widow", 60, 8000, 12],
-      ["Enforcers", 90, 17000, 28]
-    ]
-  },
-  {
-    id: "kite",
-    name: "Kite",
-    rarity: "Épico",
-    chance: 1.8,
-    value: 50000,
-    hp: 1350,
-    strength: 90,
-    defense: 85,
-    stamina: 95,
-    intelligence: 90,
-    speed: 80,
-    skills: [
-      ["Crazy Slots", 45, 6000, 5],
-      ["Foice", 70, 10000, 15],
-      ["Arma Aleatória", 90, 16000, 25],
-      ["Crazy Slots Supremo", 125, 35000, 45]
-    ]
-  },
-  {
-    id: "hisoka",
-    name: "Hisoka",
-    rarity: "Épico",
-    chance: 2,
-    value: 60000,
-    hp: 1400,
-    strength: 100,
-    defense: 90,
-    stamina: 95,
-    intelligence: 100,
-    speed: 90,
-    skills: [
-      ["Bungee Gum", 35, 4000, 1],
-      ["Texture Surprise", 25, 3000, 5],
-      ["Armadilha de Bungee Gum", 60, 10000, 15],
-      ["Bungee Gum Avançado", 95, 22000, 30],
-      ["Bungee Gum Supremo", 130, 40000, 50]
-    ]
-  },
-  {
-    id: "illumi",
-    name: "Illumi Zoldyck",
-    rarity: "Épico",
-    chance: 1.8,
-    value: 65000,
-    hp: 1250,
-    strength: 80,
-    defense: 75,
-    stamina: 90,
-    intelligence: 105,
-    speed: 85,
-    skills: [
-      ["Agulhas", 40, 5000, 1],
-      ["Controle Humano", 65, 10000, 12],
-      ["Corpo Transformado", 80, 15000, 22],
-      ["Exército de Agulhas", 115, 30000, 40]
-    ]
-  },
-  {
-    id: "biscuit",
-    name: "Biscuit Krueger",
-    rarity: "Épico",
-    chance: 1.5,
-    value: 70000,
-    hp: 1500,
-    strength: 110,
-    defense: 100,
-    stamina: 105,
-    intelligence: 110,
-    speed: 80,
-    skills: [
-      ["Forma Verdadeira", 50, 7000, 5],
-      ["Golpe Reforçado", 75, 12000, 15],
-      ["Força Monstruosa", 110, 25000, 30],
-      ["Biscuit Suprema", 145, 45000, 50]
-    ]
-  },
-  {
-    id: "silva",
-    name: "Silva Zoldyck",
-    rarity: "Épico",
-    chance: 1.3,
-    value: 75000,
-    hp: 1550,
-    strength: 120,
-    defense: 105,
-    stamina: 100,
-    intelligence: 95,
-    speed: 90,
-    skills: [
-      ["Esfera de Nen", 55, 7000, 5],
-      ["Orbe de Aura", 80, 12000, 15],
-      ["Impacto Explosivo", 110, 23000, 30],
-      ["Esfera Suprema", 150, 45000, 50]
-    ]
-  },
-  {
-    id: "zeno",
-    name: "Zeno Zoldyck",
-    rarity: "Épico",
-    chance: 1.2,
-    value: 80000,
-    hp: 1500,
-    strength: 105,
-    defense: 100,
-    stamina: 105,
-    intelligence: 110,
-    speed: 100,
-    skills: [
-      ["Dragon Head", 45, 6000, 5],
-      ["Dragon Lance", 65, 10000, 15],
-      ["Dragon Dive", 90, 20000, 28],
-      ["Dragon Supremo", 135, 40000, 50]
-    ]
-  },
-  {
-    id: "razor",
-    name: "Razor",
-    rarity: "Lendário",
-    chance: 0.9,
-    value: 100000,
-    hp: 1800,
-    strength: 135,
-    defense: 115,
-    stamina: 120,
-    intelligence: 90,
-    speed: 80,
-    skills: [
-      ["Nen Ball", 60, 8000, 5],
-      ["14 Devils", 85, 15000, 18],
-      ["Throw Nen", 120, 30000, 35],
-      ["Nen Ball Supremo", 160, 55000, 55]
-    ]
-  },
-  {
-    id: "chrollo",
-    name: "Chrollo Lucilfer",
-    rarity: "Lendário",
-    chance: 1,
-    value: 120000,
-    hp: 1500,
-    strength: 100,
-    defense: 95,
-    stamina: 105,
-    intelligence: 125,
-    speed: 95,
-    skills: [
-      ["Skill Hunter", 35, 8000, 5],
-      ["Double Face", 50, 12000, 12],
-      ["Sun & Moon", 80, 22000, 25],
-      ["Black Voice", 95, 28000, 35],
-      ["Skill Hunter Supremo", 150, 55000, 60]
-    ]
-  },
-  {
-    id: "netero",
-    name: "Isaac Netero",
-    rarity: "Lendário",
-    chance: 0.7,
-    value: 150000,
-    hp: 1900,
-    strength: 140,
-    defense: 130,
-    stamina: 125,
-    intelligence: 130,
-    speed: 135,
-    skills: [
-      ["Zero Hand", 70, 10000, 10],
-      ["Guanyin", 100, 20000, 25],
-      ["100-Type Guanyin", 140, 35000, 40],
-      ["Zero Hand Supremo", 190, 70000, 65]
-    ]
-  },
-  {
-    id: "ging",
-    name: "Ging Freecss",
-    rarity: "Lendário",
-    chance: 0.5,
-    value: 180000,
-    hp: 1750,
-    strength: 125,
-    defense: 115,
-    stamina: 125,
-    intelligence: 145,
-    speed: 110,
-    skills: [
-      ["Cópia de Técnica", 55, 10000, 5],
-      ["Ataque Copiado", 80, 18000, 15],
-      ["Nen Adaptativo", 120, 30000, 30],
-      ["Técnica Suprema", 170, 60000, 55]
-    ]
-  },
-  {
-    id: "meruem",
-    name: "Meruem",
-    rarity: "Mítico",
-    chance: 0.2,
-    value: 250000,
-    hp: 3000,
-    strength: 200,
-    defense: 180,
-    stamina: 170,
-    intelligence: 180,
-    speed: 150,
-    skills: [
-      ["Aura Dominante", 80, 15000, 10],
-      ["En", 90, 18000, 15],
-      ["Poder da Quimera", 120, 28000, 25],
-      ["Evolução", 160, 45000, 40],
-      ["Rage Blast", 220, 80000, 70]
-    ]
-  },
-  {
-    id: "pitou",
-    name: "Neferpitou",
-    rarity: "Mítico",
-    chance: 0.15,
-    value: 220000,
-    hp: 2600,
-    strength: 175,
-    defense: 170,
-    stamina: 165,
-    intelligence: 160,
-    speed: 145,
-    skills: [
-      ["Doctor Blythe", 60, 12000, 10],
-      ["Terpsichora", 100, 22000, 25],
-      ["En Supremo", 130, 35000, 40],
-      ["Terpsichora Máximo", 190, 65000, 65]
-    ]
-  },
-  {
-    id: "pouf",
-    name: "Shaiapouf",
-    rarity: "Mítico",
-    chance: 0.15,
-    value: 210000,
-    hp: 2500,
-    strength: 150,
-    defense: 160,
-    stamina: 180,
-    intelligence: 170,
-    speed: 140,
-    skills: [
-      ["Beelzebub", 60, 12000, 10],
-      ["Spiritual Message", 80, 18000, 20],
-      ["Cocoon", 110, 30000, 35],
-      ["Divisão Suprema", 175, 60000, 60]
-    ]
-  },
-  {
-    id: "youpi",
-    name: "Menthuthuyoupi",
-    rarity: "Mítico",
-    chance: 0.15,
-    value: 215000,
-    hp: 2800,
-    strength: 190,
-    defense: 190,
-    stamina: 180,
-    intelligence: 130,
-    speed: 120,
-    skills: [
-      ["Metamorfose", 70, 12000, 10],
-      ["Tentáculos", 100, 20000, 20],
-      ["Explosão de Raiva", 150, 35000, 35],
-      ["Rage Blast Supremo", 210, 70000, 60]
-    ]
-  }
+    {
+        name: "Gon Freecss",
+        rarity: "Raro",
+        chance: 8,
+        base: {
+            hp: 120,
+            stamina: 100,
+            strength: 18,
+            defense: 12,
+            intelligence: 8,
+            speed: 12,
+            nen: 15
+        },
+        skills: [
+            { name: "Pedra", damage: 60, xp: 100 },
+            { name: "Tesoura", damage: 50, xp: 180 },
+            { name: "Papel", damage: 40, xp: 140 },
+            { name: "Jajanken", damage: 90, xp: 400 }
+        ]
+    },
+
+    {
+        name: "Killua Zoldyck",
+        rarity: "Raro",
+        chance: 7,
+        base: {
+            hp: 110,
+            stamina: 125,
+            strength: 15,
+            defense: 13,
+            intelligence: 14,
+            speed: 22,
+            nen: 16
+        },
+        skills: [
+            { name: "Raio", damage: 40, xp: 100 },
+            { name: "Eletricidade", damage: 55, xp: 200 },
+            { name: "Godspeed", damage: 90, xp: 450 }
+        ]
+    },
+
+    {
+        name: "Kurapika",
+        rarity: "Épico",
+        chance: 4,
+        base: {
+            hp: 115,
+            stamina: 105,
+            strength: 14,
+            defense: 13,
+            intelligence: 20,
+            speed: 13,
+            nen: 22
+        },
+        skills: [
+            { name: "Dowsing Chain", damage: 45, xp: 120 },
+            { name: "Holy Chain", damage: 60, xp: 250 },
+            { name: "Emperor Time", damage: 95, xp: 500 }
+        ]
+    },
+
+    {
+        name: "Leorio",
+        rarity: "Comum",
+        chance: 15,
+        base: {
+            hp: 105,
+            stamina: 90,
+            strength: 10,
+            defense: 10,
+            intelligence: 12,
+            speed: 8,
+            nen: 8
+        },
+        skills: [
+            { name: "Socão", damage: 25, xp: 50 },
+            { name: "Punch Nen", damage: 45, xp: 150 }
+        ]
+    },
+
+    {
+        name: "Hisoka",
+        rarity: "Lendário",
+        chance: 2.5,
+        base: {
+            hp: 125,
+            stamina: 115,
+            strength: 18,
+            defense: 16,
+            intelligence: 23,
+            speed: 18,
+            nen: 25
+        },
+        skills: [
+            { name: "Bungee Gum", damage: 55, xp: 150 },
+            { name: "Texture Surprise", damage: 45, xp: 220 },
+            { name: "Bungee Trap", damage: 80, xp: 400 }
+        ]
+    },
+
+    {
+        name: "Chrollo Lucilfer",
+        rarity: "Lendário",
+        chance: 1.5,
+        base: {
+            hp: 130,
+            stamina: 120,
+            strength: 19,
+            defense: 17,
+            intelligence: 27,
+            speed: 17,
+            nen: 30
+        },
+        skills: [
+            { name: "Skill Hunter", damage: 75, xp: 250 },
+            { name: "Bandit's Secret", damage: 100, xp: 600 }
+        ]
+    },
+
+    {
+        name: "Netero",
+        rarity: "Lendário",
+        chance: 0.8,
+        base: {
+            hp: 150,
+            stamina: 140,
+            strength: 28,
+            defense: 24,
+            intelligence: 30,
+            speed: 28,
+            nen: 35
+        },
+        skills: [
+            { name: "100-Type Guanyin", damage: 100, xp: 700 }
+        ]
+    },
+
+    {
+        name: "Zeno Zoldyck",
+        rarity: "Épico",
+        chance: 3,
+        base: {
+            hp: 135,
+            stamina: 125,
+            strength: 20,
+            defense: 18,
+            intelligence: 25,
+            speed: 20,
+            nen: 27
+        },
+        skills: [
+            { name: "Dragon Head", damage: 60, xp: 180 },
+            { name: "Dragon Dive", damage: 80, xp: 400 }
+        ]
+    },
+
+    {
+        name: "Illumi Zoldyck",
+        rarity: "Épico",
+        chance: 2,
+        base: {
+            hp: 120,
+            stamina: 110,
+            strength: 17,
+            defense: 15,
+            intelligence: 24,
+            speed: 16,
+            nen: 25
+        },
+        skills: [
+            { name: "Needle People", damage: 55, xp: 180 },
+            { name: "Needle Control", damage: 80, xp: 400 }
+        ]
+    },
+
+    {
+        name: "Kalluto Zoldyck",
+        rarity: "Comum",
+        chance: 10,
+        base: {
+            hp: 100,
+            stamina: 100,
+            strength: 10,
+            defense: 10,
+            intelligence: 15,
+            speed: 15,
+            nen: 14
+        },
+        skills: [
+            { name: "Paper Manipulation", damage: 35, xp: 100 },
+            { name: "Paper Storm", damage: 60, xp: 250 }
+        ]
+    },
+
+    {
+        name: "Biscuit Krueger",
+        rarity: "Épico",
+        chance: 3,
+        base: {
+            hp: 140,
+            stamina: 125,
+            strength: 25,
+            defense: 22,
+            intelligence: 25,
+            speed: 17,
+            nen: 28
+        },
+        skills: [
+            { name: "Super Strength", damage: 55, xp: 150 },
+            { name: "True Form", damage: 85, xp: 450 }
+        ]
+    },
+
+    {
+        name: "Ging Freecss",
+        rarity: "Lendário",
+        chance: 1,
+        base: {
+            hp: 140,
+            stamina: 135,
+            strength: 23,
+            defense: 20,
+            intelligence: 32,
+            speed: 22,
+            nen: 34
+        },
+        skills: [
+            { name: "Nen Copy", damage: 70, xp: 300 },
+            { name: "Nen Mastery", damage: 100, xp: 700 }
+        ]
+    },
+
+    {
+        name: "Feitan",
+        rarity: "Épico",
+        chance: 2.5,
+        base: {
+            hp: 125,
+            stamina: 115,
+            strength: 22,
+            defense: 15,
+            intelligence: 18,
+            speed: 24,
+            nen: 24
+        },
+        skills: [
+            { name: "Rising Sun", damage: 85, xp: 400 },
+            { name: "Pain Packer", damage: 100, xp: 650 }
+        ]
+    },
+
+    {
+        name: "Phinks",
+        rarity: "Raro",
+        chance: 5,
+        base: {
+            hp: 135,
+            stamina: 110,
+            strength: 25,
+            defense: 17,
+            intelligence: 12,
+            speed: 15,
+            nen: 20
+        },
+        skills: [
+            { name: "Ripper Cyclotron", damage: 75, xp: 350 }
+        ]
+    },
+
+    {
+        name: "Machi",
+        rarity: "Raro",
+        chance: 5,
+        base: {
+            hp: 115,
+            stamina: 115,
+            strength: 15,
+            defense: 15,
+            intelligence: 20,
+            speed: 19,
+            nen: 21
+        },
+        skills: [
+            { name: "Nen Threads", damage: 45, xp: 150 },
+            { name: "Thread Trap", damage: 70, xp: 300 }
+        ]
+    },
+
+    {
+        name: "Uvogin",
+        rarity: "Épico",
+        chance: 2.5,
+        base: {
+            hp: 160,
+            stamina: 115,
+            strength: 32,
+            defense: 28,
+            intelligence: 7,
+            speed: 10,
+            nen: 23
+        },
+        skills: [
+            { name: "Big Bang Impact", damage: 80, xp: 400 },
+            { name: "Maximum Power", damage: 100, xp: 650 }
+        ]
+    },
+
+    {
+        name: "Meruem",
+        rarity: "Mítico",
+        chance: 0.2,
+        base: {
+            hp: 200,
+            stamina: 180,
+            strength: 40,
+            defense: 35,
+            intelligence: 40,
+            speed: 30,
+            nen: 45
+        },
+        skills: [
+            { name: "Rage Blast", damage: 100, xp: 800 },
+            { name: "Aura Synthesis", damage: 120, xp: 1200 }
+        ]
+    }
 ];
 
 // ======================================================
-// NEN
+// NEN — INDEPENDENTE DO PERSONAGEM
 // ======================================================
 
 const nenTypes = [
-  { name: "Fortificação", chance: 25 },
-  { name: "Emissão", chance: 20 },
-  { name: "Transformação", chance: 20 },
-  { name: "Conjuração", chance: 15 },
-  { name: "Manipulação", chance: 15 },
-  { name: "Especialização", chance: 5 }
+    {
+        name: "Especialização",
+        chance: 5,
+        skills: [
+            { name: "Técnica Especial", damage: 40, xp: 100 },
+            { name: "Habilidade Única", damage: 65, xp: 300 },
+            { name: "Poder Especial", damage: 90, xp: 700 }
+        ]
+    },
+    {
+        name: "Fortificação",
+        chance: 20,
+        skills: [
+            { name: "Reforço Básico", damage: 25, xp: 80 },
+            { name: "Aura Reforçada", damage: 45, xp: 220 },
+            { name: "Impacto de Aura", damage: 70, xp: 500 }
+        ]
+    },
+    {
+        name: "Emissão",
+        chance: 15,
+        skills: [
+            { name: "Rajada de Aura", damage: 30, xp: 80 },
+            { name: "Disparo de Aura", damage: 50, xp: 220 },
+            { name: "Explosão Emissora", damage: 75, xp: 500 }
+        ]
+    },
+    {
+        name: "Transformação",
+        chance: 15,
+        skills: [
+            { name: "Aura Alterada", damage: 30, xp: 80 },
+            { name: "Aura Elétrica", damage: 55, xp: 250 },
+            { name: "Transformação Avançada", damage: 80, xp: 550 }
+        ]
+    },
+    {
+        name: "Conjuração",
+        chance: 20,
+        skills: [
+            { name: "Lâmina de Aura", damage: 30, xp: 80 },
+            { name: "Corrente de Aura", damage: 55, xp: 250 },
+            { name: "Prisão de Aura", damage: 80, xp: 550 }
+        ]
+    },
+    {
+        name: "Manipulação",
+        chance: 25,
+        skills: [
+            { name: "Controle", damage: 35, xp: 80 },
+            { name: "Agulhas de Aura", damage: 55, xp: 250 },
+            { name: "Dominação", damage: 80, xp: 550 }
+        ]
+    }
 ];
 
-function randomNen() {
-  const roll = Math.random() * 100;
-  let total = 0;
-
-  for (const nen of nenTypes) {
-    total += nen.chance;
-    if (roll <= total) return nen.name;
-  }
-
-  return "Fortificação";
-}
-
 // ======================================================
-// BOSSES
+// BOSS
 // ======================================================
 
 const bosses = [
-  {
-    id: "bandit",
-    name: "Bandido",
-    group: "Iniciais",
-    minLevel: 1,
-    maxLevel: 5,
-    hp: 180,
-    damage: 20,
-    defense: 10,
-    xp: 100,
-    money: 50
-  },
-  {
-    id: "thief",
-    name: "Ladrão",
-    group: "Iniciais",
-    minLevel: 5,
-    maxLevel: 10,
-    hp: 280,
-    damage: 30,
-    defense: 15,
-    xp: 180,
-    money: 80
-  },
-  {
-    id: "nen_user",
-    name: "Usuário de Nen",
-    group: "Iniciais",
-    minLevel: 10,
-    maxLevel: 20,
-    hp: 450,
-    damage: 45,
-    defense: 25,
-    xp: 300,
-    money: 150
-  },
-  {
-    id: "hunter",
-    name: "Hunter Renegado",
-    group: "Iniciais",
-    minLevel: 20,
-    maxLevel: 30,
-    hp: 650,
-    damage: 60,
-    defense: 35,
-    xp: 500,
-    money: 250
-  },
+    { name: "Bandido", minLevel: 1, hp: 100, damage: 8, xp: 40, money: 15 },
+    { name: "Ladrão", minLevel: 5, hp: 150, damage: 12, xp: 60, money: 25 },
+    { name: "Usuário de Nen", minLevel: 10, hp: 230, damage: 18, xp: 90, money: 40 },
+    { name: "Hunter Renegado", minLevel: 20, hp: 350, damage: 25, xp: 130, money: 60 },
 
-  // TRUPE FANTASMA
-  {
-    id: "kalluto_boss",
-    name: "Kalluto",
-    group: "Trupe Fantasma",
-    minLevel: 25,
-    maxLevel: 35,
-    hp: 800,
-    damage: 70,
-    defense: 45,
-    xp: 700,
-    money: 350
-  },
-  {
-    id: "shizuku_boss",
-    name: "Shizuku",
-    group: "Trupe Fantasma",
-    minLevel: 30,
-    maxLevel: 40,
-    hp: 900,
-    damage: 80,
-    defense: 50,
-    xp: 850,
-    money: 400
-  },
-  {
-    id: "shalnark_boss",
-    name: "Shalnark",
-    group: "Trupe Fantasma",
-    minLevel: 35,
-    maxLevel: 45,
-    hp: 1000,
-    damage: 90,
-    defense: 55,
-    xp: 1000,
-    money: 500
-  },
-  {
-    id: "machi_boss",
-    name: "Machi",
-    group: "Trupe Fantasma",
-    minLevel: 40,
-    maxLevel: 50,
-    hp: 1100,
-    damage: 100,
-    defense: 65,
-    xp: 1200,
-    money: 600
-  },
-  {
-    id: "nobunaga_boss",
-    name: "Nobunaga",
-    group: "Trupe Fantasma",
-    minLevel: 45,
-    maxLevel: 55,
-    hp: 1200,
-    damage: 110,
-    defense: 70,
-    xp: 1400,
-    money: 700
-  },
-  {
-    id: "phinks_boss",
-    name: "Phinks",
-    group: "Trupe Fantasma",
-    minLevel: 50,
-    maxLevel: 60,
-    hp: 1350,
-    damage: 125,
-    defense: 75,
-    xp: 1600,
-    money: 800
-  },
-  {
-    id: "feitan_boss",
-    name: "Feitan",
-    group: "Trupe Fantasma",
-    minLevel: 55,
-    maxLevel: 65,
-    hp: 1450,
-    damage: 140,
-    defense: 80,
-    xp: 1800,
-    money: 900
-  },
-  {
-    id: "franklin_boss",
-    name: "Franklin",
-    group: "Trupe Fantasma",
-    minLevel: 60,
-    maxLevel: 70,
-    hp: 1550,
-    damage: 145,
-    defense: 85,
-    xp: 2000,
-    money: 1000
-  },
-  {
-    id: "bonolenov_boss",
-    name: "Bonolenov",
-    group: "Trupe Fantasma",
-    minLevel: 60,
-    maxLevel: 75,
-    hp: 1600,
-    damage: 150,
-    defense: 90,
-    xp: 2200,
-    money: 1100
-  },
-  {
-    id: "pakunoda_boss",
-    name: "Pakunoda",
-    group: "Trupe Fantasma",
-    minLevel: 55,
-    maxLevel: 70,
-    hp: 1300,
-    damage: 120,
-    defense: 75,
-    xp: 1700,
-    money: 850
-  },
-  {
-    id: "kortopi_boss",
-    name: "Kortopi",
-    group: "Trupe Fantasma",
-    minLevel: 50,
-    maxLevel: 65,
-    hp: 1250,
-    damage: 115,
-    defense: 70,
-    xp: 1600,
-    money: 800
-  },
-  {
-    id: "uvogin_boss",
-    name: "Uvogin",
-    group: "Trupe Fantasma",
-    minLevel: 65,
-    maxLevel: 80,
-    hp: 2000,
-    damage: 180,
-    defense: 110,
-    xp: 3000,
-    money: 1500
-  },
-  {
-    id: "chrollo_boss",
-    name: "Chrollo Lucilfer",
-    group: "Trupe Fantasma",
-    minLevel: 70,
-    maxLevel: 100,
-    hp: 2300,
-    damage: 200,
-    defense: 120,
-    xp: 4000,
-    money: 2000
-  },
+    // TRUPE FANTASMA
+    { name: "Kalluto Zoldyck", minLevel: 25, hp: 500, damage: 32, xp: 180, money: 90 },
+    { name: "Shizuku", minLevel: 30, hp: 600, damage: 38, xp: 220, money: 110 },
+    { name: "Shalnark", minLevel: 35, hp: 700, damage: 42, xp: 250, money: 130 },
+    { name: "Machi", minLevel: 40, hp: 800, damage: 48, xp: 280, money: 150 },
+    { name: "Nobunaga", minLevel: 45, hp: 900, damage: 55, xp: 320, money: 170 },
+    { name: "Phinks", minLevel: 50, hp: 1000, damage: 62, xp: 350, money: 190 },
+    { name: "Feitan", minLevel: 55, hp: 1100, damage: 68, xp: 390, money: 210 },
+    { name: "Franklin", minLevel: 60, hp: 1250, damage: 75, xp: 430, money: 230 },
+    { name: "Bonolenov", minLevel: 60, hp: 1200, damage: 72, xp: 420, money: 220 },
+    { name: "Pakunoda", minLevel: 65, hp: 1300, damage: 78, xp: 450, money: 240 },
+    { name: "Uvogin", minLevel: 65, hp: 1500, damage: 90, xp: 500, money: 270 },
+    { name: "Chrollo Lucilfer", minLevel: 70, hp: 1800, damage: 105, xp: 650, money: 350 },
 
-  // FORMIGAS QUIMERA
-  {
-    id: "soldier_ant",
-    name: "Soldado Formiga Quimera",
-    group: "Formigas Quimera",
-    minLevel: 70,
-    maxLevel: 85,
-    hp: 1800,
-    damage: 160,
-    defense: 100,
-    xp: 2500,
-    money: 1200
-  },
-  {
-    id: "rammot",
-    name: "Rammot",
-    group: "Formigas Quimera",
-    minLevel: 75,
-    maxLevel: 95,
-    hp: 2100,
-    damage: 190,
-    defense: 115,
-    xp: 3200,
-    money: 1600
-  },
-  {
-    id: "cheetu",
-    name: "Cheetu",
-    group: "Formigas Quimera",
-    minLevel: 85,
-    maxLevel: 105,
-    hp: 2200,
-    damage: 210,
-    defense: 110,
-    xp: 3500,
-    money: 1800
-  },
-  {
-    id: "leol",
-    name: "Leol",
-    group: "Formigas Quimera",
-    minLevel: 95,
-    maxLevel: 115,
-    hp: 2500,
-    damage: 230,
-    defense: 130,
-    xp: 4000,
-    money: 2000
-  },
-  {
-    id: "zazan",
-    name: "Zazan",
-    group: "Formigas Quimera",
-    minLevel: 105,
-    maxLevel: 125,
-    hp: 2800,
-    damage: 250,
-    defense: 145,
-    xp: 5000,
-    money: 2500
-  },
+    // CHIMERA ANTS
+    { name: "Soldado Quimera", minLevel: 70, hp: 1600, damage: 85, xp: 500, money: 280 },
+    { name: "Rammot", minLevel: 75, hp: 1900, damage: 95, xp: 550, money: 300 },
+    { name: "Cheetu", minLevel: 85, hp: 2200, damage: 110, xp: 650, money: 350 },
+    { name: "Leol", minLevel: 95, hp: 2600, damage: 125, xp: 750, money: 400 },
+    { name: "Zazan", minLevel: 105, hp: 3000, damage: 140, xp: 850, money: 450 },
 
-  // GUARDAS REAIS
-  {
-    id: "pitou_boss",
-    name: "Neferpitou",
-    group: "Guardas Reais",
-    minLevel: 120,
-    maxLevel: 150,
-    hp: 5000,
-    damage: 400,
-    defense: 250,
-    xp: 9000,
-    money: 5000
-  },
-  {
-    id: "pouf_boss",
-    name: "Shaiapouf",
-    group: "Guardas Reais",
-    minLevel: 130,
-    maxLevel: 160,
-    hp: 5200,
-    damage: 420,
-    defense: 260,
-    xp: 9500,
-    money: 5500
-  },
-  {
-    id: "youpi_boss",
-    name: "Menthuthuyoupi",
-    group: "Guardas Reais",
-    minLevel: 140,
-    maxLevel: 175,
-    hp: 6000,
-    damage: 450,
-    defense: 300,
-    xp: 11000,
-    money: 6500
-  },
+    // GUARDAS REAIS
+    { name: "Neferpitou", minLevel: 120, hp: 4500, damage: 180, xp: 1200, money: 650 },
+    { name: "Shaiapouf", minLevel: 130, hp: 4800, damage: 195, xp: 1300, money: 700 },
+    { name: "Menthuthuyoupi", minLevel: 140, hp: 5500, damage: 220, xp: 1450, money: 800 },
 
-  // MERUEM
-  {
-    id: "meruem_boss",
-    name: "Meruem",
-    group: "Rei das Formigas",
-    minLevel: 180,
-    maxLevel: 9999,
-    hp: 10000,
-    damage: 700,
-    defense: 450,
-    xp: 25000,
-    money: 15000
-  }
+    // REI
+    { name: "Meruem", minLevel: 180, hp: 8000, damage: 300, xp: 2500, money: 1500 }
 ];
 
 // ======================================================
-// UTILIDADES
+// FUNÇÕES
 // ======================================================
 
-function weightedCharacter() {
-  const total = characters.reduce((sum, c) => sum + c.chance, 0);
-  let roll = Math.random() * total;
+function randomCharacter() {
+    const total = characters.reduce((sum, c) => sum + c.chance, 0);
+    let roll = Math.random() * total;
 
-  for (const character of characters) {
-    roll -= character.chance;
+    for (const character of characters) {
+        roll -= character.chance;
 
-    if (roll <= 0) {
-      return character;
+        if (roll <= 0) {
+            return character;
+        }
     }
-  }
 
-  return characters[0];
+    return characters[0];
 }
 
-function getCharacter(id) {
-  return characters.find(c => c.id === id);
+function randomNen() {
+    const total = nenTypes.reduce((sum, n) => sum + n.chance, 0);
+    let roll = Math.random() * total;
+
+    for (const nen of nenTypes) {
+        roll -= nen.chance;
+
+        if (roll <= 0) {
+            return nen;
+        }
+    }
+
+    return nenTypes[0];
 }
 
-function getBoss(id) {
-  return bosses.find(b => b.id === id);
+function randomNenPercentage() {
+    return Math.floor(Math.random() * 51) + 50;
 }
 
 function createPlayer(userId) {
-  const character = weightedCharacter();
-  const nen = randomNen();
+    const character = randomCharacter();
+    const nen = randomNen();
 
-  const maxHp = character.hp;
-  const maxStamina = character.stamina;
+    players[userId] = {
+        userId,
 
-  players[userId] = {
-    userId,
+        character: character.name,
+        rarity: character.rarity,
+        characterChance: character.chance,
 
-    characterId: character.id,
-    characterName: character.name,
-    rarity: character.rarity,
-    characterChance: character.chance,
-    characterValue: character.value,
+        nen: nen.name,
+        nenChance: nen.chance,
+        nenPercentage: randomNenPercentage(),
 
-    nen,
+        level: 1,
+        xp: 0,
+        xpNext: 100,
+        money: 100,
 
-    level: 1,
-    xp: 0,
-    totalXp: 0,
-    money: 0,
+        hp: character.base.hp,
+        maxHp: character.base.hp,
 
-    hp: maxHp,
-    maxHp,
+        stamina: character.base.stamina,
+        maxStamina: character.base.stamina,
 
-    stamina: maxStamina,
-    maxStamina,
+        strength: character.base.strength,
+        defense: character.base.defense,
+        intelligence: character.base.intelligence,
+        speed: character.base.speed,
+        nenPower: character.base.nen,
 
-    strength: character.strength,
-    defense: character.defense,
-    intelligence: character.intelligence,
-    speed: character.speed,
+        upgradePoints: 5,
 
-    upgradePoints: 5,
+        unlockedCharacterSkills: [],
+        unlockedNenSkills: [],
 
-    unlockedSkills: [],
+        currentBoss: null,
+        defending: false
+    };
 
-    wins: 0,
-    losses: 0,
+    savePlayers(players);
 
-    currentBossId: null,
-    currentBossHp: 0,
-
-    createdAt: Date.now()
-  };
-
-  savePlayers();
-
-  return players[userId];
+    return players[userId];
 }
 
-function getPlayer(userId) {
-  if (!players[userId]) {
-    return createPlayer(userId);
-  }
-
-  return players[userId];
+function getPlayer(id) {
+    return players[id];
 }
 
-function xpNeeded(level) {
-  return Math.floor(100 * Math.pow(level, 1.35));
+function getCharacter(player) {
+    return characters.find(c => c.name === player.character);
 }
 
-function addXp(player, amount) {
-  player.xp += amount;
-  player.totalXp += amount;
-
-  let levels = 0;
-
-  while (player.xp >= xpNeeded(player.level)) {
-    player.xp -= xpNeeded(player.level);
-    player.level++;
-    player.upgradePoints += 3;
-    levels++;
-  }
-
-  return levels;
+function getNen(player) {
+    return nenTypes.find(n => n.name === player.nen);
 }
 
-function isAdmin(userId) {
-  return ADMIN_IDS.includes(userId);
+function getBoss(name) {
+    return bosses.find(b => b.name === name);
 }
 
-function randomBossForLevel(level) {
-  const available = bosses.filter(
-    boss => level >= boss.minLevel
-  );
+function levelUp(player) {
+    let levels = 0;
 
-  if (!available.length) {
-    return bosses[0];
-  }
+    while (player.xp >= player.xpNext) {
+        player.xp -= player.xpNext;
+        player.level++;
+        player.xpNext = Math.floor(player.xpNext * 1.35);
+        player.upgradePoints += 3;
 
-  return available[Math.floor(Math.random() * available.length)];
+        levels++;
+    }
+
+    return levels;
 }
 
-function calculatePlayerDamage(player) {
-  const character = getCharacter(player.characterId);
-
-  let damage =
-    Math.floor(
-      player.strength * 0.7 +
-      player.speed * 0.2 +
-      player.intelligence * 0.1
-    );
-
-  if (player.nen === "Fortificação") damage += 15;
-  if (player.nen === "Emissão") damage += 10;
-  if (player.nen === "Transformação") damage += 12;
-  if (player.nen === "Conjuração") damage += 8;
-  if (player.nen === "Manipulação") damage += 8;
-  if (player.nen === "Especialização") damage += 20;
-
-  if (character) {
-    damage += Math.floor(character.strength * 0.15);
-  }
-
-  return Math.max(5, damage);
+function availableBosses(player) {
+    return bosses.filter(b => player.level >= b.minLevel);
 }
 
-function calculateBossDamage(player, boss, defending = false) {
-  let damage = boss.damage - Math.floor(player.defense * 0.35);
+function chooseRandomBoss(player) {
+    const available = availableBosses(player);
 
-  if (defending) {
-    damage = Math.floor(damage * 0.45);
-  }
+    if (!available.length) return null;
 
-  return Math.max(1, damage);
-}
-
-function embedColor(rarity) {
-  const colors = {
-    "Comum": 0x95a5a6,
-    "Incomum": 0x2ecc71,
-    "Raro": 0x3498db,
-    "Épico": 0x9b59b6,
-    "Lendário": 0xf1c40f,
-    "Mítico": 0xe74c3c
-  };
-
-  return colors[rarity] || 0x5865F2;
+    return available[Math.floor(Math.random() * available.length)];
 }
 
 // ======================================================
@@ -1282,199 +623,114 @@ function embedColor(rarity) {
 // ======================================================
 
 function panelEmbed(player) {
-  const character = getCharacter(player.characterId);
+    return new EmbedBuilder()
+        .setTitle("Hunter x Hunter RPG")
+        .setDescription(
+            `**${player.character}** • ${player.rarity}\n` +
+            `Nen: **${player.nen}**\n` +
+            `Potência de Nen: **${player.nenPercentage}%**\n\n` +
 
-  return new EmbedBuilder()
-    .setColor(embedColor(player.rarity))
-    .setTitle("🎮 Hunter x Hunter RPG")
-    .setDescription(
-      `**${player.characterName}** • ${player.rarity}\n` +
-      `🔮 Nen: **${player.nen}**\n\n` +
-      `📊 **Nível:** ${player.level}\n` +
-      `✨ **XP:** ${player.xp}/${xpNeeded(player.level)}\n` +
-      `💰 **Dinheiro:** ${player.money}\n\n` +
-      `❤️ **Vida:** ${player.hp}/${player.maxHp}\n` +
-      `⚡ **Stamina:** ${player.stamina}/${player.maxStamina}\n\n` +
-      `💪 Força: ${player.strength}\n` +
-      `🛡️ Defesa: ${player.defense}\n` +
-      `🧠 Inteligência: ${player.intelligence}\n` +
-      `💨 Velocidade: ${player.speed}\n\n` +
-      `📈 Pontos de upgrade: **${player.upgradePoints}**`
-    )
-    .setFooter({
-      text: "Hunter x Hunter RPG • Use os botões para jogar"
-    });
+            `⭐ Nível: **${player.level}**\n` +
+            `✨ XP: **${player.xp}/${player.xpNext}**\n` +
+            `💰 Dinheiro: **R$ ${player.money}**\n\n` +
+
+            `❤️ HP: **${player.hp}/${player.maxHp}**\n` +
+            `⚡ Stamina: **${player.stamina}/${player.maxStamina}**\n\n` +
+
+            `💪 Força: **${player.strength}**\n` +
+            `🛡️ Defesa: **${player.defense}**\n` +
+            `🧠 Inteligência: **${player.intelligence}**\n` +
+            `💨 Velocidade: **${player.speed}**\n` +
+            `🔮 Nen: **${player.nenPower}**\n\n` +
+
+            `🔧 Pontos de upgrade: **${player.upgradePoints}**`
+        );
 }
 
 function characterEmbed(player) {
-  const character = getCharacter(player.characterId);
+    const character = getCharacter(player);
 
-  const skills = character.skills
-    .map((skill, i) => {
-      const [name, damage, cost, level] = skill;
-      const unlocked = player.unlockedSkills.includes(i);
+    const skills = character.skills
+        .map(s =>
+            `• **${s.name}** — ${s.damage} dano — ${s.xp} XP`
+        )
+        .join("\n");
 
-      return `${unlocked ? "✅" : "🔒"} **${name}** — 💥 ${damage} dano — ✨ ${cost} XP — Lv.${level}`;
-    })
-    .join("\n");
+    return new EmbedBuilder()
+        .setTitle(`🎭 ${character.name}`)
+        .setDescription(
+            `Raridade: **${character.rarity}**\n` +
+            `Chance: **${character.chance}%**\n\n` +
 
-  return new EmbedBuilder()
-    .setColor(embedColor(player.rarity))
-    .setTitle(`🎭 ${character.name}`)
-    .setDescription(
-      `⭐ **Raridade:** ${character.rarity}\n` +
-      `🎲 **Chance:** ${character.chance}%\n` +
-      `💰 **Valor:** ${character.value}\n` +
-      `🔮 **Nen:** ${player.nen}\n\n` +
-      `❤️ HP: ${player.maxHp}\n` +
-      `💪 Força: ${player.strength}\n` +
-      `🛡️ Defesa: ${player.defense}\n` +
-      `⚡ Stamina: ${player.maxStamina}\n` +
-      `🧠 Inteligência: ${player.intelligence}\n` +
-      `💨 Velocidade: ${player.speed}\n\n` +
-      `**⚡ Poderes do personagem**\n${skills}`
-    );
-}
+            `❤️ HP: ${character.base.hp}\n` +
+            `⚡ Stamina: ${character.base.stamina}\n` +
+            `💪 Força: ${character.base.strength}\n` +
+            `🛡️ Defesa: ${character.base.defense}\n` +
+            `🧠 Inteligência: ${character.base.intelligence}\n` +
+            `💨 Velocidade: ${character.base.speed}\n\n` +
 
-function nenEmbed(player) {
-  const nen = nenTypes.find(n => n.name === player.nen);
-
-  return new EmbedBuilder()
-    .setColor(0x8e44ad)
-    .setTitle("🔮 Seu Nen")
-    .setDescription(
-      `Seu Nen foi sorteado **separadamente do personagem**.\n\n` +
-      `🔮 **Tipo:** ${player.nen}\n` +
-      `🎲 **Chance do tipo:** ${nen ? nen.chance : "?"}%\n\n` +
-      `⚠️ O Nen **não pode ser girado novamente**.\n` +
-      `🎭 Os poderes/habilidades disponíveis continuam sendo determinados pelo seu personagem.`
-    );
+            `### Habilidades do personagem\n${skills}`
+        );
 }
 
 function profileEmbed(player) {
-  return new EmbedBuilder()
-    .setColor(embedColor(player.rarity))
-    .setTitle(`👤 Perfil de ${player.characterName}`)
-    .addFields(
-      {
-        name: "🎭 Personagem",
-        value:
-          `${player.characterName}\n` +
-          `⭐ ${player.rarity}\n` +
-          `🎲 ${player.characterChance}%\n` +
-          `💰 Valor: ${player.characterValue}`,
-        inline: true
-      },
-      {
-        name: "🔮 Nen",
-        value: `${player.nen}`,
-        inline: true
-      },
-      {
-        name: "📊 Progressão",
-        value:
-          `Nível: ${player.level}\n` +
-          `XP: ${player.xp}/${xpNeeded(player.level)}\n` +
-          `XP total: ${player.totalXp}\n` +
-          `💰 Dinheiro: ${player.money}`,
-        inline: true
-      },
-      {
-        name: "❤️ Combate",
-        value:
-          `HP: ${player.hp}/${player.maxHp}\n` +
-          `Stamina: ${player.stamina}/${player.maxStamina}\n` +
-          `Força: ${player.strength}\n` +
-          `Defesa: ${player.defense}`,
-        inline: true
-      },
-      {
-        name: "🧠 Atributos",
-        value:
-          `Inteligência: ${player.intelligence}\n` +
-          `Velocidade: ${player.speed}\n` +
-          `Upgrades: ${player.upgradePoints}`,
-        inline: true
-      },
-      {
-        name: "🏆 Histórico",
-        value:
-          `Vitórias: ${player.wins}\n` +
-          `Derrotas: ${player.losses}`,
-        inline: true
-      }
-    );
+    return new EmbedBuilder()
+        .setTitle("👤 Perfil do Jogador")
+        .setDescription(
+            `🎭 Personagem: **${player.character}**\n` +
+            `💎 Raridade: **${player.rarity}**\n` +
+            `🎲 Chance: **${player.characterChance}%**\n\n` +
+
+            `🔮 Nen: **${player.nen}**\n` +
+            `🎲 Chance do Nen: **${player.nenChance}%**\n` +
+            `⚡ Potência de Nen: **${player.nenPercentage}%**\n\n` +
+
+            `⭐ Nível: **${player.level}**\n` +
+            `✨ XP: **${player.xp}/${player.xpNext}**\n` +
+            `💰 Dinheiro: **R$ ${player.money}**\n\n` +
+
+            `❤️ HP: **${player.hp}/${player.maxHp}**\n` +
+            `⚡ Stamina: **${player.stamina}/${player.maxStamina}**\n\n` +
+
+            `💪 Força: **${player.strength}**\n` +
+            `🛡️ Defesa: **${player.defense}**\n` +
+            `🧠 Inteligência: **${player.intelligence}**\n` +
+            `💨 Velocidade: **${player.speed}**\n` +
+            `🔮 Nen: **${player.nenPower}**\n\n` +
+
+            `🔧 Pontos de upgrade: **${player.upgradePoints}**`
+        );
 }
 
 function skillsEmbed(player) {
-  const character = getCharacter(player.characterId);
+    const character = getCharacter(player);
+    const nen = getNen(player);
 
-  const text = character.skills
-    .map((skill, index) => {
-      const [name, damage, cost, level] = skill;
-      const unlocked = player.unlockedSkills.includes(index);
+    const characterSkills = character.skills
+        .map(skill => {
+            const unlocked = player.unlockedCharacterSkills.includes(skill.name);
+            return `${unlocked ? "✅" : "🔒"} **${skill.name}** — ${skill.damage} dano — ${skill.xp} XP`;
+        })
+        .join("\n");
 
-      return (
-        `${unlocked ? "✅" : "🔒"} **${name}**\n` +
-        `💥 Dano: ${damage}\n` +
-        `✨ XP: ${cost}\n` +
-        `📊 Nível: ${level}\n`
-      );
-    })
-    .join("\n");
+    const nenSkills = nen.skills
+        .map(skill => {
+            const unlocked = player.unlockedNenSkills.includes(skill.name);
+            return `${unlocked ? "✅" : "🔒"} **${skill.name}** — ${skill.damage} dano — ${skill.xp} XP`;
+        })
+        .join("\n");
 
-  return new EmbedBuilder()
-    .setColor(0x3498db)
-    .setTitle(`⚡ Habilidades de ${character.name}`)
-    .setDescription(
-      `As habilidades são determinadas pelo seu personagem.\n` +
-      `Você usa XP para desbloqueá-las.\n\n${text}`
-    );
-}
+    return new EmbedBuilder()
+        .setTitle("⚔️ Habilidades")
+        .setDescription(
+            `### 🎭 Habilidades de ${character.name}\n` +
+            `${characterSkills}\n\n` +
 
-function upgradeEmbed(player) {
-  return new EmbedBuilder()
-    .setColor(0x2ecc71)
-    .setTitle("📈 Upgrades")
-    .setDescription(
-      `Você possui **${player.upgradePoints} pontos**.\n\n` +
-      `❤️ Vida: ${player.maxHp}\n` +
-      `⚡ Stamina: ${player.maxStamina}\n` +
-      `💪 Força: ${player.strength}\n` +
-      `🛡️ Defesa: ${player.defense}\n` +
-      `🧠 Inteligência: ${player.intelligence}\n` +
-      `💨 Velocidade: ${player.speed}\n\n` +
-      `Cada upgrade custa **1 ponto**.`
-    );
-}
+            `### 🔮 Habilidades de ${nen.name}\n` +
+            `${nenSkills}\n\n` +
 
-function battleEmbed(player) {
-  const boss = getBoss(player.currentBossId);
-
-  if (!boss) {
-    return panelEmbed(player);
-  }
-
-  const hpPercent = Math.max(
-    0,
-    Math.floor((player.currentBossHp / boss.hp) * 100)
-  );
-
-  return new EmbedBuilder()
-    .setColor(0xe74c3c)
-    .setTitle(`⚔️ Batalha — ${boss.name}`)
-    .setDescription(
-      `👹 **${boss.name}**\n` +
-      `🏷️ ${boss.group}\n` +
-      `📊 Nível mínimo: ${boss.minLevel}\n\n` +
-      `❤️ **Boss HP:** ${player.currentBossHp}/${boss.hp} (${hpPercent}%)\n` +
-      `💥 **Dano do Boss:** ${boss.damage}\n` +
-      `🛡️ **Defesa do Boss:** ${boss.defense}\n\n` +
-      `👤 **${player.characterName}**\n` +
-      `❤️ Vida: ${player.hp}/${player.maxHp}\n` +
-      `⚡ Stamina: ${player.stamina}/${player.maxStamina}\n\n` +
-      `💥 Seu dano básico: ${calculatePlayerDamage(player)}`
-    );
+            `Use os botões abaixo para desbloquear habilidades com XP.`
+        );
 }
 
 // ======================================================
@@ -1482,217 +738,242 @@ function battleEmbed(player) {
 // ======================================================
 
 function mainButtons() {
-  return [
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("character")
-        .setLabel("Personagem")
-        .setEmoji("🎭")
-        .setStyle(ButtonStyle.Primary),
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("character")
+            .setLabel("Personagem")
+            .setEmoji("🎭")
+            .setStyle(ButtonStyle.Primary),
 
-      new ButtonBuilder()
-        .setCustomId("nen")
-        .setLabel("Nen")
-        .setEmoji("🔮")
-        .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("boss")
+            .setLabel("Batalhar")
+            .setEmoji("👹")
+            .setStyle(ButtonStyle.Danger),
 
-      new ButtonBuilder()
-        .setCustomId("bosses")
-        .setLabel("Bosses")
-        .setEmoji("👹")
-        .setStyle(ButtonStyle.Danger)
-    ),
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("skills")
-        .setLabel("Habilidades")
-        .setEmoji("⚡")
-        .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+            .setCustomId("skills")
+            .setLabel("Habilidades")
+            .setEmoji("⚔️")
+            .setStyle(ButtonStyle.Success),
 
-      new ButtonBuilder()
-        .setCustomId("upgrades")
-        .setLabel("Upgrades")
-        .setEmoji("📈")
-        .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId("upgrades")
+            .setLabel("Upgrades")
+            .setEmoji("🔧")
+            .setStyle(ButtonStyle.Secondary),
 
-      new ButtonBuilder()
-        .setCustomId("profile")
-        .setLabel("Perfil")
-        .setEmoji("👤")
-        .setStyle(ButtonStyle.Secondary)
-    ),
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("battle_random")
-        .setLabel("Batalhar")
-        .setEmoji("⚔️")
-        .setStyle(ButtonStyle.Danger),
-
-      new ButtonBuilder()
-        .setCustomId("refresh")
-        .setLabel("Atualizar")
-        .setEmoji("🔄")
-        .setStyle(ButtonStyle.Secondary)
-    )
-  ];
+        new ButtonBuilder()
+            .setCustomId("profile")
+            .setLabel("Perfil")
+            .setEmoji("👤")
+            .setStyle(ButtonStyle.Secondary)
+    );
 }
 
 function backButton() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("back_panel")
-      .setLabel("Voltar")
-      .setEmoji("⬅️")
-      .setStyle(ButtonStyle.Secondary)
-  );
-}
-
-function upgradeButtons() {
-  return [
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("up_hp")
-        .setLabel("Vida +")
-        .setEmoji("❤️")
-        .setStyle(ButtonStyle.Success),
-
-      new ButtonBuilder()
-        .setCustomId("up_stamina")
-        .setLabel("Stamina +")
-        .setEmoji("⚡")
-        .setStyle(ButtonStyle.Success),
-
-      new ButtonBuilder()
-        .setCustomId("up_strength")
-        .setLabel("Força +")
-        .setEmoji("💪")
-        .setStyle(ButtonStyle.Primary)
-    ),
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("up_defense")
-        .setLabel("Defesa +")
-        .setEmoji("🛡️")
-        .setStyle(ButtonStyle.Primary),
-
-      new ButtonBuilder()
-        .setCustomId("up_intelligence")
-        .setLabel("Inteligência +")
-        .setEmoji("🧠")
-        .setStyle(ButtonStyle.Primary),
-
-      new ButtonBuilder()
-        .setCustomId("up_speed")
-        .setLabel("Velocidade +")
-        .setEmoji("💨")
-        .setStyle(ButtonStyle.Primary)
-    ),
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("back_panel")
-        .setLabel("Voltar")
-        .setEmoji("⬅️")
-        .setStyle(ButtonStyle.Secondary)
-    )
-  ];
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("back_panel")
+            .setLabel("Voltar")
+            .setEmoji("↩️")
+            .setStyle(ButtonStyle.Secondary)
+    );
 }
 
 function battleButtons() {
-  return [
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("attack")
-        .setLabel("Atacar")
-        .setEmoji("⚔️")
-        .setStyle(ButtonStyle.Danger),
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("attack")
+            .setLabel("Atacar")
+            .setEmoji("⚔️")
+            .setStyle(ButtonStyle.Danger),
 
-      new ButtonBuilder()
-        .setCustomId("use_skill")
-        .setLabel("Habilidade")
-        .setEmoji("⚡")
-        .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+            .setCustomId("use_skill")
+            .setLabel("Habilidade")
+            .setEmoji("✨")
+            .setStyle(ButtonStyle.Primary),
 
-      new ButtonBuilder()
-        .setCustomId("defend")
-        .setLabel("Defender")
-        .setEmoji("🛡️")
-        .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId("defend")
+            .setLabel("Defender")
+            .setEmoji("🛡️")
+            .setStyle(ButtonStyle.Secondary),
 
-      new ButtonBuilder()
-        .setCustomId("flee")
-        .setLabel("Fugir")
-        .setEmoji("🏃")
-        .setStyle(ButtonStyle.Secondary)
-    )
-  ];
+        new ButtonBuilder()
+            .setCustomId("flee")
+            .setLabel("Fugir")
+            .setEmoji("🏃")
+            .setStyle(ButtonStyle.Secondary)
+    );
+}
+
+function upgradeButtons() {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("up_hp")
+            .setLabel("HP +")
+            .setStyle(ButtonStyle.Danger),
+
+        new ButtonBuilder()
+            .setCustomId("up_stamina")
+            .setLabel("Stamina +")
+            .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+            .setCustomId("up_strength")
+            .setLabel("Força +")
+            .setStyle(ButtonStyle.Danger),
+
+        new ButtonBuilder()
+            .setCustomId("up_defense")
+            .setLabel("Defesa +")
+            .setStyle(ButtonStyle.Secondary),
+
+        new ButtonBuilder()
+            .setCustomId("up_speed")
+            .setLabel("Velocidade +")
+            .setStyle(ButtonStyle.Success)
+    );
+}
+
+function upgradeButtons2() {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("up_intelligence")
+            .setLabel("Inteligência +")
+            .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+            .setCustomId("up_nen")
+            .setLabel("Nen +")
+            .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
+            .setCustomId("upgrades")
+            .setLabel("Continuar")
+            .setStyle(ButtonStyle.Secondary),
+
+        new ButtonBuilder()
+            .setCustomId("back_panel")
+            .setLabel("Painel")
+            .setStyle(ButtonStyle.Secondary)
+    );
 }
 
 // ======================================================
-// REGISTRO DO /RPG E /ADM
+// COMANDOS
 // ======================================================
 
 const commands = [
-  new SlashCommandBuilder()
-    .setName("rpg")
-    .setDescription("Abrir o Hunter x Hunter RPG"),
+    new SlashCommandBuilder()
+        .setName("rpg")
+        .setDescription("Abrir o Hunter x Hunter RPG"),
 
-  new SlashCommandBuilder()
-    .setName("adm")
-    .setDescription("Painel administrativo do RPG")
-    .addStringOption(option =>
-      option
-        .setName("acao")
-        .setDescription("Ação administrativa")
-        .setRequired(true)
-        .addChoices(
-          { name: "Dar XP", value: "give_xp" },
-          { name: "Dar dinheiro", value: "give_money" },
-          { name: "Dar nível", value: "give_level" },
-          { name: "Dar upgrade", value: "give_upgrade" },
-          { name: "Evento XP", value: "event_xp" },
-          { name: "Evento dinheiro", value: "event_money" }
+    new SlashCommandBuilder()
+        .setName("admin")
+        .setDescription("Comandos administrativos do RPG")
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .addSubcommand(sub =>
+            sub
+                .setName("xp")
+                .setDescription("Dar XP")
+                .addUserOption(o =>
+                    o.setName("usuario")
+                        .setDescription("Jogador")
+                        .setRequired(true)
+                )
+                .addIntegerOption(o =>
+                    o.setName("quantidade")
+                        .setDescription("Quantidade de XP")
+                        .setRequired(true)
+                )
         )
-    )
-    .addUserOption(option =>
-      option
-        .setName("usuario")
-        .setDescription("Jogador que receberá a recompensa")
-        .setRequired(false)
-    )
-    .addIntegerOption(option =>
-      option
-        .setName("quantidade")
-        .setDescription("Quantidade")
-        .setRequired(false)
-        .setMinValue(1)
-    )
-];
+        .addSubcommand(sub =>
+            sub
+                .setName("dinheiro")
+                .setDescription("Dar dinheiro")
+                .addUserOption(o =>
+                    o.setName("usuario")
+                        .setDescription("Jogador")
+                        .setRequired(true)
+                )
+                .addIntegerOption(o =>
+                    o.setName("quantidade")
+                        .setDescription("Quantidade")
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(sub =>
+            sub
+                .setName("nivel")
+                .setDescription("Dar níveis")
+                .addUserOption(o =>
+                    o.setName("usuario")
+                        .setDescription("Jogador")
+                        .setRequired(true)
+                )
+                .addIntegerOption(o =>
+                    o.setName("quantidade")
+                        .setDescription("Quantidade de níveis")
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(sub =>
+            sub
+                .setName("evento")
+                .setDescription("Dar recompensa de evento")
+                .addIntegerOption(o =>
+                    o.setName("xp")
+                        .setDescription("XP")
+                        .setRequired(true)
+                )
+                .addIntegerOption(o =>
+                    o.setName("dinheiro")
+                        .setDescription("Dinheiro")
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(sub =>
+            sub
+                .setName("reset")
+                .setDescription("Resetar um jogador")
+                .addUserOption(o =>
+                    o.setName("usuario")
+                        .setDescription("Jogador")
+                        .setRequired(true)
+                )
+        )
+].map(command => command.toJSON());
+
+// ======================================================
+// REGISTRAR COMANDOS
+// ======================================================
+
+const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 async function registerCommands() {
-  const rest = new REST({ version: "10" }).setToken(TOKEN);
+    try {
+        console.log("Registrando comandos...");
 
-  await rest.put(
-    Routes.applicationCommands(CLIENT_ID),
-    {
-      body: commands.map(command => command.toJSON())
+        await rest.put(
+            Routes.applicationCommands(CLIENT_ID),
+            { body: commands }
+        );
+
+        console.log("✅ Comandos registrados.");
+    } catch (error) {
+        console.error("Erro ao registrar comandos:", error);
     }
-  );
-
-  console.log("Comandos registrados.");
 }
 
 // ======================================================
 // READY
 // ======================================================
 
-client.once("ready", async () => {
-  console.log(`${client.user.tag} está online!`);
-
-  try {
-    await registerCommands();
-  } catch (error) {
-    console.error("Erro registrando comandos:", error);
-  }
+client.once("ready", () => {
+    console.log(`✅ ${client.user.tag} está online!`);
 });
 
 // ======================================================
@@ -1700,941 +981,716 @@ client.once("ready", async () => {
 // ======================================================
 
 client.on("interactionCreate", async interaction => {
-  try {
-    // ==================================================
-    // /RPG
-    // ==================================================
+    try {
+        // ==============================================
+        // /RPG
+        // ==============================================
 
-    if (interaction.isChatInputCommand() && interaction.commandName === "rpg") {
-      const isNew = !players[interaction.user.id];
+        if (interaction.isChatInputCommand()) {
 
-      const player = getPlayer(interaction.user.id);
+            if (interaction.commandName === "rpg") {
 
-      if (isNew) {
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(embedColor(player.rarity))
-              .setTitle("🎉 Seu personagem foi sorteado!")
-              .setDescription(
-                `🎭 **${player.characterName}**\n` +
-                `⭐ Raridade: **${player.rarity}**\n` +
-                `🎲 Chance: **${player.characterChance}%**\n\n` +
-                `🔮 Seu Nen também foi sorteado:\n` +
-                `**${player.nen}**\n\n` +
-                `Use os botões abaixo para começar.`
-              )
-          ],
-          components: mainButtons()
-        });
-      } else {
-        await interaction.reply({
-          embeds: [panelEmbed(player)],
-          components: mainButtons()
-        });
-      }
+                let player = getPlayer(interaction.user.id);
 
-      return;
-    }
+                if (!player) {
+                    player = createPlayer(interaction.user.id);
 
-    // ==================================================
-    // /ADM
-    // ==================================================
+                    const embed = characterEmbed(player);
 
-    if (interaction.isChatInputCommand() && interaction.commandName === "adm") {
-      if (!isAdmin(interaction.user.id)) {
-        return interaction.reply({
-          content: "❌ Você não tem permissão para usar este comando.",
-          ephemeral: true
-        });
-      }
+                    return interaction.reply({
+                        embeds: [embed],
+                        components: [mainButtons()]
+                    });
+                }
 
-      const action = interaction.options.getString("acao");
-      const target = interaction.options.getUser("usuario");
-      const amount = interaction.options.getInteger("quantidade") || 1;
+                return interaction.reply({
+                    embeds: [panelEmbed(player)],
+                    components: [mainButtons()]
+                });
+            }
 
-      if (action.startsWith("event_")) {
-        let affected = 0;
+            // ==========================================
+            // ADMIN
+            // ==========================================
 
-        for (const id of Object.keys(players)) {
-          const p = players[id];
+            if (interaction.commandName === "admin") {
 
-          if (action === "event_xp") {
-            addXp(p, amount);
-          }
+                if (
+                    interaction.user.id !== OWNER_ID &&
+                    !interaction.memberPermissions?.has(
+                        PermissionFlagsBits.Administrator
+                    )
+                ) {
+                    return interaction.reply({
+                        content: "❌ Você não tem permissão para usar o sistema administrativo.",
+                        ephemeral: true
+                    });
+                }
 
-          if (action === "event_money") {
-            p.money += amount;
-          }
+                const sub = interaction.options.getSubcommand();
 
-          affected++;
+                // DAR XP
+                if (sub === "xp") {
+                    const user = interaction.options.getUser("usuario");
+                    const amount = interaction.options.getInteger("quantidade");
+
+                    const player = getPlayer(user.id);
+
+                    if (!player) {
+                        return interaction.reply({
+                            content: "❌ Esse jogador ainda não iniciou o RPG.",
+                            ephemeral: true
+                        });
+                    }
+
+                    player.xp += amount;
+                    const levels = levelUp(player);
+
+                    savePlayers(players);
+
+                    return interaction.reply(
+                        `✅ ${user} recebeu **${amount} XP**.` +
+                        (levels > 0 ? ` Subiu **${levels} nível(is)**!` : "")
+                    );
+                }
+
+                // DAR DINHEIRO
+                if (sub === "dinheiro") {
+                    const user = interaction.options.getUser("usuario");
+                    const amount = interaction.options.getInteger("quantidade");
+
+                    const player = getPlayer(user.id);
+
+                    if (!player) {
+                        return interaction.reply({
+                            content: "❌ Esse jogador ainda não iniciou o RPG.",
+                            ephemeral: true
+                        });
+                    }
+
+                    player.money += amount;
+
+                    savePlayers(players);
+
+                    return interaction.reply(
+                        `✅ ${user} recebeu **R$ ${amount}**.`
+                    );
+                }
+
+                // DAR NÍVEL
+                if (sub === "nivel") {
+                    const user = interaction.options.getUser("usuario");
+                    const amount = interaction.options.getInteger("quantidade");
+
+                    const player = getPlayer(user.id);
+
+                    if (!player) {
+                        return interaction.reply({
+                            content: "❌ Esse jogador ainda não iniciou o RPG.",
+                            ephemeral: true
+                        });
+                    }
+
+                    player.level += amount;
+                    player.upgradePoints += amount * 3;
+
+                    savePlayers(players);
+
+                    return interaction.reply(
+                        `✅ ${user} recebeu **${amount} nível(is)**.`
+                    );
+                }
+
+                // EVENTO
+                if (sub === "evento") {
+                    const xp = interaction.options.getInteger("xp");
+                    const money = interaction.options.getInteger("dinheiro");
+
+                    let count = 0;
+
+                    for (const id of Object.keys(players)) {
+                        players[id].xp += xp;
+                        players[id].money += money;
+
+                        levelUp(players[id]);
+
+                        count++;
+                    }
+
+                    savePlayers(players);
+
+                    return interaction.reply(
+                        `🎉 **EVENTO ATIVADO!**\n\n` +
+                        `👥 Jogadores afetados: **${count}**\n` +
+                        `✨ XP recebido: **${xp}**\n` +
+                        `💰 Dinheiro recebido: **R$ ${money}**`
+                    );
+                }
+
+                // RESET
+                if (sub === "reset") {
+                    const user = interaction.options.getUser("usuario");
+
+                    delete players[user.id];
+
+                    savePlayers(players);
+
+                    return interaction.reply(
+                        `♻️ O RPG de ${user} foi resetado.\n` +
+                        `Ele receberá um novo personagem e um novo Nen ao usar /rpg.`
+                    );
+                }
+            }
         }
 
-        savePlayers();
+        // ==============================================
+        // BOTÕES
+        // ==============================================
 
-        return interaction.reply({
-          content:
-            `🎉 **Evento realizado!**\n` +
-            `👥 Jogadores afetados: **${affected}**\n` +
-            `${action === "event_xp" ? "✨ XP" : "💰 Dinheiro"} recebido: **${amount}**`,
-          ephemeral: true
-        });
-      }
+        if (interaction.isButton()) {
 
-      if (!target) {
-        return interaction.reply({
-          content: "❌ Você precisa selecionar um usuário.",
-          ephemeral: true
-        });
-      }
+            const player = getPlayer(interaction.user.id);
 
-      const player = getPlayer(target.id);
+            if (!player) {
+                return interaction.reply({
+                    content: "❌ Use `/rpg` primeiro.",
+                    ephemeral: true
+                });
+            }
 
-      if (action === "give_xp") {
-        const levels = addXp(player, amount);
+            // PERSONAGEM
+            if (interaction.customId === "character") {
+                return interaction.update({
+                    embeds: [characterEmbed(player)],
+                    components: [backButton()]
+                });
+            }
 
-        savePlayers();
+            // PERFIL
+            if (interaction.customId === "profile") {
+                return interaction.update({
+                    embeds: [profileEmbed(player)],
+                    components: [backButton()]
+                });
+            }
 
-        return interaction.reply({
-          content:
-            `✨ **${amount} XP** adicionados a ${target}.\n` +
-            `📊 Nível atual: **${player.level}**` +
-            (levels ? `\n⬆️ Subiu **${levels} nível(is)**!` : ""),
-          ephemeral: true
-        });
-      }
+            // VOLTAR
+            if (interaction.customId === "back_panel") {
+                return interaction.update({
+                    embeds: [panelEmbed(player)],
+                    components: [mainButtons()]
+                });
+            }
 
-      if (action === "give_money") {
-        player.money += amount;
-        savePlayers();
+            // BATALHAR
+            if (interaction.customId === "boss") {
 
-        return interaction.reply({
-          content: `💰 **${amount}** adicionados para ${target}.`,
-          ephemeral: true
-        });
-      }
+                const boss = chooseRandomBoss(player);
 
-      if (action === "give_level") {
-        player.level += amount;
-        player.upgradePoints += amount * 3;
+                if (!boss) {
+                    return interaction.update({
+                        content: "❌ Nenhum boss disponível para seu nível.",
+                        embeds: [],
+                        components: [backButton()]
+                    });
+                }
 
-        savePlayers();
+                player.currentBoss = {
+                    name: boss.name,
+                    hp: boss.hp,
+                    maxHp: boss.hp
+                };
 
-        return interaction.reply({
-          content:
-            `📊 ${target} recebeu **${amount} nível(is)**.\n` +
-            `Novo nível: **${player.level}**`,
-          ephemeral: true
-        });
-      }
+                player.defending = false;
 
-      if (action === "give_upgrade") {
-        player.upgradePoints += amount;
-        savePlayers();
+                savePlayers(players);
 
-        return interaction.reply({
-          content:
-            `📈 ${target} recebeu **${amount} ponto(s) de upgrade**.`,
-          ephemeral: true
-        });
-      }
+                const battleEmbed = new EmbedBuilder()
+                    .setTitle(`👹 Boss: ${boss.name}`)
+                    .setDescription(
+                        `⚔️ Um boss apareceu!\n\n` +
+                        `👹 **${boss.name}**\n` +
+                        `❤️ HP: **${boss.hp}/${boss.hp}**\n` +
+                        `💥 Dano: **${boss.damage}**\n\n` +
+
+                        `👤 **${player.character}**\n` +
+                        `❤️ HP: **${player.hp}/${player.maxHp}**\n` +
+                        `⚡ Stamina: **${player.stamina}/${player.maxStamina}**`
+                    );
+
+                return interaction.update({
+                    embeds: [battleEmbed],
+                    components: [battleButtons()]
+                });
+            }
+
+            // ATAQUE NORMAL
+            if (interaction.customId === "attack") {
+
+                if (!player.currentBoss) {
+                    return interaction.update({
+                        embeds: [panelEmbed(player)],
+                        components: [mainButtons()]
+                    });
+                }
+
+                const boss = getBoss(player.currentBoss.name);
+
+                const damage =
+                    Math.floor(
+                        player.strength +
+                        player.speed / 2 +
+                        Math.random() * 15
+                    );
+
+                player.currentBoss.hp -= damage;
+
+                let text =
+                    `⚔️ Você causou **${damage} de dano**!`;
+
+                if (player.currentBoss.hp <= 0) {
+
+                    player.xp += boss.xp;
+                    player.money += boss.money;
+
+                    const levels = levelUp(player);
+
+                    player.currentBoss = null;
+                    player.defending = false;
+
+                    savePlayers(players);
+
+                    text +=
+                        `\n\n🏆 **BOSS DERROTADO!**\n` +
+                        `✨ +${boss.xp} XP\n` +
+                        `💰 +R$ ${boss.money}`;
+
+                    if (levels > 0) {
+                        text += `\n⭐ Você subiu ${levels} nível(is)!`;
+                    }
+
+                    return interaction.update({
+                        embeds: [
+                            new EmbedBuilder()
+                                .setTitle("🏆 Vitória!")
+                                .setDescription(text)
+                        ],
+                        components: [mainButtons()]
+                    });
+                }
+
+                let bossDamage = boss.damage;
+
+                if (player.defending) {
+                    bossDamage = Math.floor(bossDamage * 0.5);
+                    player.defending = false;
+                }
+
+                player.hp -= bossDamage;
+
+                text += `\n👹 O boss causou **${bossDamage} de dano**!`;
+
+                // MORTE
+                if (player.hp <= 0) {
+
+                    player.hp = Math.max(
+                        1,
+                        Math.floor(player.maxHp * 0.5)
+                    );
+
+                    player.maxHp = Math.max(
+                        50,
+                        player.maxHp - 10
+                    );
+
+                    player.maxStamina = Math.max(
+                        40,
+                        player.maxStamina - 5
+                    );
+
+                    player.stamina = Math.min(
+                        player.stamina,
+                        player.maxStamina
+                    );
+
+                    player.currentBoss = null;
+
+                    savePlayers(players);
+
+                    return interaction.update({
+                        embeds: [
+                            new EmbedBuilder()
+                                .setTitle("💀 Você morreu!")
+                                .setDescription(
+                                    `Você foi derrotado por **${boss.name}**.\n\n` +
+                                    `❤️ Seu HP máximo diminuiu em **10**.\n` +
+                                    `⚡ Sua Stamina máxima diminuiu em **5**.\n\n` +
+                                    `🔧 Use **Upgrades** para recuperar seus atributos.`
+                                )
+                        ],
+                        components: [mainButtons()]
+                    });
+                }
+
+                savePlayers(players);
+
+                const battleEmbed = new EmbedBuilder()
+                    .setTitle(`👹 ${boss.name}`)
+                    .setDescription(
+                        `❤️ Boss: **${Math.max(0, player.currentBoss.hp)}/${boss.hp}**\n` +
+                        `❤️ Você: **${player.hp}/${player.maxHp}**\n` +
+                        `⚡ Stamina: **${player.stamina}/${player.maxStamina}**\n\n` +
+                        text
+                    );
+
+                return interaction.update({
+                    embeds: [battleEmbed],
+                    components: [battleButtons()]
+                });
+            }
+
+            // DEFENDER
+            if (interaction.customId === "defend") {
+
+                if (!player.currentBoss) {
+                    return interaction.update({
+                        embeds: [panelEmbed(player)],
+                        components: [mainButtons()]
+                    });
+                }
+
+                player.defending = true;
+
+                savePlayers(players);
+
+                return interaction.update({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("🛡️ Defesa")
+                            .setDescription(
+                                `Você entrou em posição defensiva.\n\n` +
+                                `O próximo dano do boss será reduzido.`
+                            )
+                    ],
+                    components: [battleButtons()]
+                });
+            }
+
+            // FUGIR
+            if (interaction.customId === "flee") {
+
+                player.currentBoss = null;
+                player.defending = false;
+
+                savePlayers(players);
+
+                return interaction.update({
+                    embeds: [panelEmbed(player)],
+                    components: [mainButtons()]
+                });
+            }
+
+            // HABILIDADES
+            if (interaction.customId === "skills") {
+
+                return interaction.update({
+                    embeds: [skillsEmbed(player)],
+                    components: [
+                        new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setCustomId("unlock_character")
+                                .setLabel("Desbloquear Personagem")
+                                .setEmoji("🎭")
+                                .setStyle(ButtonStyle.Primary),
+
+                            new ButtonBuilder()
+                                .setCustomId("unlock_nen")
+                                .setLabel("Desbloquear Nen")
+                                .setEmoji("🔮")
+                                .setStyle(ButtonStyle.Success)
+                        ),
+                        backButton()
+                    ]
+                });
+            }
+
+            // DESBLOQUEAR HABILIDADES DO PERSONAGEM
+            if (interaction.customId === "unlock_character") {
+
+                const character = getCharacter(player);
+
+                const available = character.skills.filter(
+                    skill =>
+                        !player.unlockedCharacterSkills.includes(skill.name)
+                );
+
+                if (!available.length) {
+                    return interaction.update({
+                        embeds: [
+                            new EmbedBuilder()
+                                .setTitle("🎭 Habilidades")
+                                .setDescription(
+                                    "✅ Você já desbloqueou todas as habilidades do personagem."
+                                )
+                        ],
+                        components: [backButton()]
+                    });
+                }
+
+                const options = available.slice(0, 25).map(skill => ({
+                    label: `${skill.name} — ${skill.damage} dano`,
+                    description: `Custa ${skill.xp} XP`,
+                    value: skill.name
+                }));
+
+                const menu = new StringSelectMenuBuilder()
+                    .setCustomId("unlock_character_select")
+                    .setPlaceholder("Escolha uma habilidade")
+                    .addOptions(options);
+
+                return interaction.update({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("🎭 Habilidades do Personagem")
+                            .setDescription(
+                                `Você tem **${player.xp} XP**.\n\n` +
+                                `Escolha uma habilidade para desbloquear.`
+                            )
+                    ],
+                    components: [
+                        new ActionRowBuilder().addComponents(menu),
+                        backButton()
+                    ]
+                });
+            }
+
+            // DESBLOQUEAR NEN
+            if (interaction.customId === "unlock_nen") {
+
+                const nen = getNen(player);
+
+                const available = nen.skills.filter(
+                    skill =>
+                        !player.unlockedNenSkills.includes(skill.name)
+                );
+
+                if (!available.length) {
+                    return interaction.update({
+                        embeds: [
+                            new EmbedBuilder()
+                                .setTitle("🔮 Habilidades de Nen")
+                                .setDescription(
+                                    "✅ Você já desbloqueou todas as habilidades do seu Nen."
+                                )
+                        ],
+                        components: [backButton()]
+                    });
+                }
+
+                const options = available.map(skill => ({
+                    label: `${skill.name} — ${skill.damage} dano`,
+                    description: `Custa ${skill.xp} XP`,
+                    value: skill.name
+                }));
+
+                const menu = new StringSelectMenuBuilder()
+                    .setCustomId("unlock_nen_select")
+                    .setPlaceholder("Escolha uma habilidade")
+                    .addOptions(options);
+
+                return interaction.update({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle(`🔮 Nen — ${nen.name}`)
+                            .setDescription(
+                                `Você tem **${player.xp} XP**.\n\n` +
+                                `Escolha uma habilidade para desbloquear.`
+                            )
+                    ],
+                    components: [
+                        new ActionRowBuilder().addComponents(menu),
+                        backButton()
+                    ]
+                });
+            }
+
+            // UPGRADES
+            if (interaction.customId === "upgrades") {
+
+                return interaction.update({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("🔧 Upgrades")
+                            .setDescription(
+                                `Você tem **${player.upgradePoints} pontos**.\n\n` +
+                                `❤️ HP: ${player.maxHp}\n` +
+                                `⚡ Stamina: ${player.maxStamina}\n` +
+                                `💪 Força: ${player.strength}\n` +
+                                `🛡️ Defesa: ${player.defense}\n` +
+                                `🧠 Inteligência: ${player.intelligence}\n` +
+                                `💨 Velocidade: ${player.speed}\n` +
+                                `🔮 Nen: ${player.nenPower}`
+                            )
+                    ],
+                    components: [upgradeButtons(), upgradeButtons2()]
+                });
+            }
+
+            // UPGRADES INDIVIDUAIS
+            const upgradeMap = {
+                up_hp: "hp",
+                up_stamina: "stamina",
+                up_strength: "strength",
+                up_defense: "defense",
+                up_speed: "speed",
+                up_intelligence: "intelligence",
+                up_nen: "nenPower"
+            };
+
+            if (upgradeMap[interaction.customId]) {
+
+                if (player.upgradePoints <= 0) {
+                    return interaction.reply({
+                        content: "❌ Você não possui pontos de upgrade.",
+                        ephemeral: true
+                    });
+                }
+
+                const stat = upgradeMap[interaction.customId];
+
+                player.upgradePoints--;
+
+                if (stat === "hp") {
+                    player.maxHp += 10;
+                    player.hp += 10;
+                } else if (stat === "stamina") {
+                    player.maxStamina += 10;
+                    player.stamina += 10;
+                } else {
+                    player[stat]++;
+                }
+
+                savePlayers(players);
+
+                return interaction.update({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("🔧 Upgrade realizado!")
+                            .setDescription(
+                                `Você aumentou **${stat}**.\n\n` +
+                                `🔧 Pontos restantes: **${player.upgradePoints}**`
+                            )
+                    ],
+                    components: [upgradeButtons(), upgradeButtons2()]
+                });
+            }
+        }
+
+        // ==============================================
+        // SELECT MENUS
+        // ==============================================
+
+        if (interaction.isStringSelectMenu()) {
+
+            const player = getPlayer(interaction.user.id);
+
+            if (!player) {
+                return interaction.reply({
+                    content: "❌ Use `/rpg` primeiro.",
+                    ephemeral: true
+                });
+            }
+
+            // SKILL DO PERSONAGEM
+            if (interaction.customId === "unlock_character_select") {
+
+                const name = interaction.values[0];
+                const character = getCharacter(player);
+                const skill = character.skills.find(s => s.name === name);
+
+                if (!skill) return;
+
+                if (player.xp < skill.xp) {
+                    return interaction.reply({
+                        content:
+                            `❌ Você precisa de **${skill.xp} XP** para desbloquear essa habilidade.`,
+                        ephemeral: true
+                    });
+                }
+
+                player.xp -= skill.xp;
+                player.unlockedCharacterSkills.push(skill.name);
+
+                savePlayers(players);
+
+                return interaction.update({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("✅ Habilidade desbloqueada!")
+                            .setDescription(
+                                `🎭 **${skill.name}**\n\n` +
+                                `💥 Dano: **${skill.damage}**\n` +
+                                `✨ XP gasto: **${skill.xp}**`
+                            )
+                    ],
+                    components: [backButton()]
+                });
+            }
+
+            // SKILL DE NEN
+            if (interaction.customId === "unlock_nen_select") {
+
+                const name = interaction.values[0];
+                const nen = getNen(player);
+                const skill = nen.skills.find(s => s.name === name);
+
+                if (!skill) return;
+
+                if (player.xp < skill.xp) {
+                    return interaction.reply({
+                        content:
+                            `❌ Você precisa de **${skill.xp} XP** para desbloquear essa habilidade.`,
+                        ephemeral: true
+                    });
+                }
+
+                player.xp -= skill.xp;
+                player.unlockedNenSkills.push(skill.name);
+
+                savePlayers(players);
+
+                return interaction.update({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("✅ Habilidade de Nen desbloqueada!")
+                            .setDescription(
+                                `🔮 **${skill.name}**\n\n` +
+                                `💥 Dano: **${skill.damage}**\n` +
+                                `✨ XP gasto: **${skill.xp}**`
+                            )
+                    ],
+                    components: [backButton()]
+                });
+            }
+        }
+
+    } catch (error) {
+        console.error("Erro na interação:", error);
+
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+                content: "❌ Ocorreu um erro no RPG.",
+                ephemeral: true
+            }).catch(() => {});
+        }
     }
-
-    // ==================================================
-    // BOTÕES
-    // ==================================================
-
-    if (!interaction.isButton() && !interaction.isStringSelectMenu()) {
-      return;
-    }
-
-    const player = getPlayer(interaction.user.id);
-
-    // --------------------------------------------------
-    // PERSONAGEM
-    // --------------------------------------------------
-
-    if (interaction.customId === "character") {
-      return interaction.update({
-        embeds: [characterEmbed(player)],
-        components: [backButton()]
-      });
-    }
-
-    // --------------------------------------------------
-    // NEN
-    // --------------------------------------------------
-
-    if (interaction.customId === "nen") {
-      return interaction.update({
-        embeds: [nenEmbed(player)],
-        components: [backButton()]
-      });
-    }
-
-    // --------------------------------------------------
-    // PERFIL
-    // --------------------------------------------------
-
-    if (interaction.customId === "profile") {
-      return interaction.update({
-        embeds: [profileEmbed(player)],
-        components: [backButton()]
-      });
-    }
-
-    // --------------------------------------------------
-    // HABILIDADES
-    // --------------------------------------------------
-
-    if (interaction.customId === "skills") {
-      const character = getCharacter(player.characterId);
-
-      const options = character.skills.map((skill, index) => {
-        const unlocked = player.unlockedSkills.includes(index);
-
-        return {
-          label: skill[0],
-          description: unlocked
-            ? "Habilidade já desbloqueada"
-            : `${skill[1]} dano • ${skill[2]} XP • nível ${skill[3]}`,
-          value: String(index)
-        };
-      });
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("unlock_skill")
-        .setPlaceholder("Selecione uma habilidade")
-        .addOptions(options);
-
-      return interaction.update({
-        embeds: [skillsEmbed(player)],
-        components: [
-          new ActionRowBuilder().addComponents(menu),
-          backButton()
-        ]
-      });
-    }
-
-    // --------------------------------------------------
-    // DESBLOQUEAR HABILIDADE
-    // --------------------------------------------------
-
-    if (interaction.customId === "unlock_skill") {
-      const index = Number(interaction.values[0]);
-      const character = getCharacter(player.characterId);
-      const skill = character.skills[index];
-
-      if (!skill) {
-        return interaction.update({
-          embeds: [skillsEmbed(player)],
-          components: [backButton()]
-        });
-      }
-
-      const [name, damage, cost, requiredLevel] = skill;
-
-      if (player.unlockedSkills.includes(index)) {
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0x2ecc71)
-              .setTitle("⚡ Habilidade")
-              .setDescription(
-                `✅ **${name}** já está desbloqueada!\n\n` +
-                `💥 Dano: **${damage}**`
-              )
-          ],
-          components: [backButton()]
-        });
-      }
-
-      if (player.level < requiredLevel) {
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xe67e22)
-              .setTitle("🔒 Habilidade bloqueada")
-              .setDescription(
-                `**${name}**\n\n` +
-                `📊 Nível necessário: **${requiredLevel}**\n` +
-                `📊 Seu nível: **${player.level}**`
-              )
-          ],
-          components: [backButton()]
-        });
-      }
-
-      if (player.totalXp < cost) {
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xe74c3c)
-              .setTitle("❌ XP insuficiente")
-              .setDescription(
-                `**${name}** custa **${cost} XP**.\n\n` +
-                `✨ Seu XP total: **${player.totalXp}**`
-              )
-          ],
-          components: [backButton()]
-        });
-      }
-
-      player.totalXp -= cost;
-      player.unlockedSkills.push(index);
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0x2ecc71)
-            .setTitle("⚡ Habilidade desbloqueada!")
-            .setDescription(
-              `✅ **${name}** foi desbloqueada!\n\n` +
-              `💥 Dano: **${damage}**\n` +
-              `✨ XP gasto: **${cost}**`
-            )
-        ],
-        components: [backButton()]
-      });
-    }
-
-    // --------------------------------------------------
-    // UPGRADES
-    // --------------------------------------------------
-
-    if (interaction.customId === "upgrades") {
-      return interaction.update({
-        embeds: [upgradeEmbed(player)],
-        components: upgradeButtons()
-      });
-    }
-
-    const upgradeMap = {
-      up_hp: "hp",
-      up_stamina: "stamina",
-      up_strength: "strength",
-      up_defense: "defense",
-      up_intelligence: "intelligence",
-      up_speed: "speed"
-    };
-
-    if (upgradeMap[interaction.customId]) {
-      if (player.upgradePoints <= 0) {
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xe74c3c)
-              .setTitle("❌ Sem pontos")
-              .setDescription(
-                "Você não possui pontos de upgrade disponíveis."
-              )
-          ],
-          components: upgradeButtons()
-        });
-      }
-
-      const stat = upgradeMap[interaction.customId];
-
-      player.upgradePoints--;
-
-      if (stat === "hp") {
-        player.maxHp += 50;
-        player.hp = Math.min(player.maxHp, player.hp + 50);
-      } else if (stat === "stamina") {
-        player.maxStamina += 10;
-        player.stamina = Math.min(player.maxStamina, player.stamina + 10);
-      } else {
-        player[stat] += 5;
-      }
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [upgradeEmbed(player)],
-        components: upgradeButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // BOSSES
-    // --------------------------------------------------
-
-    if (interaction.customId === "bosses") {
-      const available = bosses.filter(
-        boss => player.level >= boss.minLevel
-      );
-
-      if (!available.length) {
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xe74c3c)
-              .setTitle("👹 Bosses")
-              .setDescription(
-                "Você ainda não possui nenhum boss disponível."
-              )
-          ],
-          components: [backButton()]
-        });
-      }
-
-      const options = available.slice(0, 25).map(boss => ({
-        label: boss.name,
-        description:
-          `${boss.group} • Lv.${boss.minLevel}+ • ${boss.damage} dano`,
-        value: boss.id
-      }));
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("boss_select")
-        .setPlaceholder("Escolha um boss disponível")
-        .addOptions(options);
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0xe74c3c)
-            .setTitle("👹 Bosses disponíveis")
-            .setDescription(
-              `Seu nível: **${player.level}**\n\n` +
-              available
-                .map(
-                  b =>
-                    `👹 **${b.name}** — ${b.group} — Lv.${b.minLevel}+`
-                )
-                .join("\n")
-            )
-        ],
-        components: [
-          new ActionRowBuilder().addComponents(menu),
-          backButton()
-        ]
-      });
-    }
-
-    // --------------------------------------------------
-    // BATALHA RANDOM
-    // --------------------------------------------------
-
-    if (interaction.customId === "battle_random") {
-      if (player.hp <= 0) {
-        player.hp = Math.max(1, Math.floor(player.maxHp * 0.25));
-        player.stamina = Math.max(
-          1,
-          Math.floor(player.maxStamina * 0.25)
-        );
-      }
-
-      const boss = randomBossForLevel(player.level);
-
-      player.currentBossId = boss.id;
-      player.currentBossHp = boss.hp;
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [battleEmbed(player)],
-        components: battleButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // SELEÇÃO DE BOSS
-    // --------------------------------------------------
-
-    if (interaction.customId === "boss_select") {
-      const boss = getBoss(interaction.values[0]);
-
-      if (!boss || player.level < boss.minLevel) {
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xe74c3c)
-              .setTitle("❌ Boss indisponível")
-              .setDescription(
-                "Seu nível ainda não permite enfrentar esse boss."
-              )
-          ],
-          components: [backButton()]
-        });
-      }
-
-      player.currentBossId = boss.id;
-      player.currentBossHp = boss.hp;
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [battleEmbed(player)],
-        components: battleButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // ATAQUE
-    // --------------------------------------------------
-
-    if (interaction.customId === "attack") {
-      const boss = getBoss(player.currentBossId);
-
-      if (!boss) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: mainButtons()
-        });
-      }
-
-      const damage = calculatePlayerDamage(player);
-
-      player.currentBossHp -= damage;
-      player.stamina = Math.max(0, player.stamina - 5);
-
-      if (player.currentBossHp <= 0) {
-        player.currentBossHp = 0;
-
-        const levels = addXp(player, boss.xp);
-        player.money += boss.money;
-        player.wins++;
-
-        player.currentBossId = null;
-        player.currentBossHp = 0;
-
-        player.hp = Math.min(player.maxHp, player.hp + 50);
-        player.stamina = Math.min(
-          player.maxStamina,
-          player.stamina + 15
-        );
-
-        savePlayers();
-
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0x2ecc71)
-              .setTitle("🏆 Vitória!")
-              .setDescription(
-                `Você derrotou **${boss.name}**!\n\n` +
-                `⚔️ Dano causado: **${damage}**\n` +
-                `✨ XP recebido: **${boss.xp}**\n` +
-                `💰 Dinheiro recebido: **${boss.money}**\n\n` +
-                `📊 Nível: **${player.level}**` +
-                (levels
-                  ? `\n⬆️ Você subiu **${levels} nível(is)!**`
-                  : "")
-              )
-          ],
-          components: mainButtons()
-        });
-      }
-
-      const bossDamage = calculateBossDamage(player, boss);
-
-      player.hp -= bossDamage;
-      player.stamina = Math.max(
-        0,
-        player.stamina - Math.floor(bossDamage * 0.15)
-      );
-
-      if (player.hp <= 0) {
-        player.hp = 0;
-        player.losses++;
-
-        // PENALIDADE DE MORTE
-        player.maxHp = Math.max(
-          100,
-          player.maxHp - 50
-        );
-
-        player.maxStamina = Math.max(
-          20,
-          player.maxStamina - 10
-        );
-
-        player.hp = Math.max(
-          1,
-          Math.floor(player.maxHp * 0.25)
-        );
-
-        player.stamina = Math.max(
-          1,
-          Math.floor(player.maxStamina * 0.25)
-        );
-
-        player.currentBossId = null;
-        player.currentBossHp = 0;
-
-        savePlayers();
-
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0x000000)
-              .setTitle("💀 Você morreu!")
-              .setDescription(
-                `Você foi derrotado por **${boss.name}**.\n\n` +
-                `📉 **Penalidade:**\n` +
-                `❤️ Vida máxima: -50\n` +
-                `⚡ Stamina máxima: -10\n\n` +
-                `📈 Use **Upgrades** para recuperar e aumentar seus atributos.\n\n` +
-                `❤️ Vida atual: ${player.hp}/${player.maxHp}\n` +
-                `⚡ Stamina atual: ${player.stamina}/${player.maxStamina}`
-              )
-          ],
-          components: mainButtons()
-        });
-      }
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [
-          battleEmbed(player),
-          new EmbedBuilder()
-            .setColor(0xe67e22)
-            .setDescription(
-              `⚔️ Você causou **${damage} de dano**.\n` +
-              `👹 ${boss.name} causou **${bossDamage} de dano** em você.`
-            )
-        ],
-        components: battleButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // DEFENDER
-    // --------------------------------------------------
-
-    if (interaction.customId === "defend") {
-      const boss = getBoss(player.currentBossId);
-
-      if (!boss) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: mainButtons()
-        });
-      }
-
-      const damage = calculateBossDamage(
-        player,
-        boss,
-        true
-      );
-
-      player.hp -= damage;
-      player.stamina = Math.min(
-        player.maxStamina,
-        player.stamina + 8
-      );
-
-      if (player.hp <= 0) {
-        player.hp = 0;
-        player.losses++;
-
-        player.maxHp = Math.max(100, player.maxHp - 50);
-        player.maxStamina = Math.max(
-          20,
-          player.maxStamina - 10
-        );
-
-        player.hp = Math.max(
-          1,
-          Math.floor(player.maxHp * 0.25)
-        );
-
-        player.stamina = Math.max(
-          1,
-          Math.floor(player.maxStamina * 0.25)
-        );
-
-        player.currentBossId = null;
-        player.currentBossHp = 0;
-
-        savePlayers();
-
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0x000000)
-              .setTitle("💀 Você morreu!")
-              .setDescription(
-                `Mesmo se defendendo, você foi derrotado por **${boss.name}**.\n\n` +
-                `📉 Vida máxima: **-50**\n` +
-                `📉 Stamina máxima: **-10**\n\n` +
-                `Use **📈 Upgrades** para recuperar seus atributos.`
-              )
-          ],
-          components: mainButtons()
-        });
-      }
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [battleEmbed(player)],
-        components: battleButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // USAR HABILIDADE
-    // --------------------------------------------------
-
-    if (interaction.customId === "use_skill") {
-      const character = getCharacter(player.characterId);
-
-      const unlocked = character.skills
-        .map((skill, index) => ({
-          skill,
-          index
-        }))
-        .filter(x => player.unlockedSkills.includes(x.index));
-
-      if (!unlocked.length) {
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xe67e22)
-              .setTitle("🔒 Nenhuma habilidade desbloqueada")
-              .setDescription(
-                "Vá em **⚡ Habilidades** e use XP para desbloquear os poderes do seu personagem."
-              )
-          ],
-          components: [backButton()]
-        });
-      }
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("battle_skill")
-        .setPlaceholder("Escolha uma habilidade")
-        .addOptions(
-          unlocked.map(({ skill, index }) => ({
-            label: skill[0],
-            description: `${skill[1]} dano`,
-            value: String(index)
-          }))
-        );
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0x3498db)
-            .setTitle("⚡ Escolha sua habilidade")
-            .setDescription(
-              `Personagem: **${player.characterName}**`
-            )
-        ],
-        components: [
-          new ActionRowBuilder().addComponents(menu),
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("back_battle")
-              .setLabel("Voltar para batalha")
-              .setEmoji("⬅️")
-              .setStyle(ButtonStyle.Secondary)
-          )
-        ]
-      });
-    }
-
-    // --------------------------------------------------
-    // HABILIDADE NA BATALHA
-    // --------------------------------------------------
-
-    if (interaction.customId === "battle_skill") {
-      const boss = getBoss(player.currentBossId);
-      const character = getCharacter(player.characterId);
-
-      if (!boss || !character) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: mainButtons()
-        });
-      }
-
-      const index = Number(interaction.values[0]);
-      const skill = character.skills[index];
-
-      if (!skill || !player.unlockedSkills.includes(index)) {
-        return interaction.update({
-          embeds: [battleEmbed(player)],
-          components: battleButtons()
-        });
-      }
-
-      const damage = Math.max(
-        1,
-        skill[1] - Math.floor(boss.defense * 0.25)
-      );
-
-      player.currentBossHp -= damage;
-      player.stamina = Math.max(
-        0,
-        player.stamina - 12
-      );
-
-      if (player.currentBossHp <= 0) {
-        player.currentBossHp = 0;
-
-        const levels = addXp(player, boss.xp);
-        player.money += boss.money;
-        player.wins++;
-
-        player.currentBossId = null;
-        player.currentBossHp = 0;
-
-        player.hp = Math.min(
-          player.maxHp,
-          player.hp + 75
-        );
-
-        savePlayers();
-
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0x2ecc71)
-              .setTitle("🏆 Vitória com habilidade!")
-              .setDescription(
-                `⚡ Você usou **${skill[0]}**.\n` +
-                `💥 Dano: **${damage}**\n\n` +
-                `👹 Boss derrotado: **${boss.name}**\n` +
-                `✨ XP: **+${boss.xp}**\n` +
-                `💰 Dinheiro: **+${boss.money}**\n\n` +
-                `📊 Nível: **${player.level}**` +
-                (levels
-                  ? `\n⬆️ +${levels} nível(is)!`
-                  : "")
-              )
-          ],
-          components: mainButtons()
-        });
-      }
-
-      const bossDamage = calculateBossDamage(player, boss);
-
-      player.hp -= bossDamage;
-
-      if (player.hp <= 0) {
-        player.hp = 0;
-        player.losses++;
-
-        player.maxHp = Math.max(100, player.maxHp - 50);
-        player.maxStamina = Math.max(
-          20,
-          player.maxStamina - 10
-        );
-
-        player.hp = Math.max(
-          1,
-          Math.floor(player.maxHp * 0.25)
-        );
-
-        player.stamina = Math.max(
-          1,
-          Math.floor(player.maxStamina * 0.25)
-        );
-
-        player.currentBossId = null;
-        player.currentBossHp = 0;
-
-        savePlayers();
-
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0x000000)
-              .setTitle("💀 Você morreu!")
-              .setDescription(
-                `Você usou **${skill[0]}**, mas **${boss.name}** derrotou você.\n\n` +
-                `📉 Vida máxima: **-50**\n` +
-                `📉 Stamina máxima: **-10**\n\n` +
-                `Use **📈 Upgrades** para melhorar seus atributos.`
-              )
-          ],
-          components: mainButtons()
-        });
-      }
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [battleEmbed(player)],
-        components: battleButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // VOLTAR PARA BATALHA
-    // --------------------------------------------------
-
-    if (interaction.customId === "back_battle") {
-      return interaction.update({
-        embeds: [battleEmbed(player)],
-        components: battleButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // FUGIR
-    // --------------------------------------------------
-
-    if (interaction.customId === "flee") {
-      player.currentBossId = null;
-      player.currentBossHp = 0;
-
-      savePlayers();
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0xf1c40f)
-            .setTitle("🏃 Você fugiu!")
-            .setDescription(
-              "A batalha foi encerrada."
-            )
-        ],
-        components: mainButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // VOLTAR AO PAINEL
-    // --------------------------------------------------
-
-    if (interaction.customId === "back_panel") {
-      return interaction.update({
-        embeds: [panelEmbed(player)],
-        components: mainButtons()
-      });
-    }
-
-    // --------------------------------------------------
-    // ATUALIZAR
-    // --------------------------------------------------
-
-    if (interaction.customId === "refresh") {
-      return interaction.update({
-        embeds: [panelEmbed(player)],
-        components: mainButtons()
-      });
-    }
-
-  } catch (error) {
-    console.error("Erro na interação:", error);
-
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: "❌ Ocorreu um erro ao executar essa ação.",
-        ephemeral: true
-      });
-    }
-  }
 });
 
 // ======================================================
-// LOGIN
+// INICIAR
 // ======================================================
 
-client.login(TOKEN);
+(async () => {
+    await registerCommands();
+    await client.login(TOKEN);
+})();
