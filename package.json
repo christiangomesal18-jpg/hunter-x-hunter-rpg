@@ -1,7 +1,6 @@
 {
   "name": "hunter-x-hunter-rpg",
   "version": "1.0.0",
-  "description": "Hunter x Hunter RPG Discord Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
