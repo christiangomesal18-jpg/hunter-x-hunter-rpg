@@ -12,6 +12,7 @@ const {
 } = require("discord.js");
 
 const fs = require("fs");
+const path = require("path");
 
 // ======================================================
 // CONFIGURAÇÃO
@@ -20,36 +21,41 @@ const fs = require("fs");
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
+// Coloque os IDs dos administradores separados por vírgula.
+// Exemplo: ADMIN_IDS=123456789,987654321
+const ADMIN_IDS = (process.env.ADMIN_IDS || "")
+  .split(",")
+  .map(x => x.trim())
+  .filter(Boolean);
+
 if (!TOKEN || !CLIENT_ID) {
-  console.error("❌ TOKEN ou CLIENT_ID não configurado.");
+  console.log("ERRO: Configure TOKEN e CLIENT_ID nas variáveis.");
   process.exit(1);
 }
+
+const DATA_FILE = path.join(__dirname, "players.json");
+
+if (!fs.existsSync(DATA_FILE)) {
+  fs.writeFileSync(DATA_FILE, "{}");
+}
+
+function loadPlayers() {
+  try {
+    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function savePlayers() {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(players, null, 2));
+}
+
+const players = loadPlayers();
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
-
-// ======================================================
-// BANCO DE DADOS
-// ======================================================
-
-const DB_FILE = "./players.json";
-
-if (!fs.existsSync(DB_FILE)) {
-  fs.writeFileSync(DB_FILE, "{}");
-}
-
-let players = {};
-
-try {
-  players = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-} catch {
-  players = {};
-}
-
-function saveDB() {
-  fs.writeFileSync(DB_FILE, JSON.stringify(players, null, 2));
-}
 
 // ======================================================
 // PERSONAGENS
@@ -57,245 +63,722 @@ function saveDB() {
 
 const characters = [
   {
+    id: "leorio",
     name: "Leorio",
     rarity: "Comum",
-    chance: 15,
-    nen: 55,
-    type: "Emissão",
-    hp: 110,
-    strength: 55,
-    defense: 50,
-    stamina: 55,
+    chance: 10,
+    value: 5000,
+    hp: 900,
+    strength: 45,
+    defense: 40,
+    stamina: 60,
     intelligence: 70,
     speed: 45,
-    skills: ["Remote Punch"]
+    skills: [
+      ["Soco Médico", 25, 1500, 1],
+      ["Punch Remoto", 40, 3500, 5],
+      ["Remote Punch Avançado", 65, 7000, 15]
+    ]
   },
-
   {
+    id: "kalluto",
     name: "Kalluto Zoldyck",
     rarity: "Comum",
-    chance: 10,
-    nen: 60,
-    type: "Manipulação",
-    hp: 105,
-    strength: 50,
-    defense: 50,
+    chance: 8,
+    value: 7000,
+    hp: 850,
+    strength: 40,
+    defense: 45,
     stamina: 65,
-    intelligence: 75,
-    speed: 70,
-    skills: ["Manipulação de Papel"]
+    intelligence: 70,
+    speed: 75,
+    skills: [
+      ["Manipulação de Papel", 30, 2000, 1],
+      ["Rastreador de Papel", 45, 4000, 8],
+      ["Tempestade de Papéis", 70, 9000, 18]
+    ]
   },
-
   {
+    id: "zushi",
+    name: "Zushi",
+    rarity: "Comum",
+    chance: 7,
+    value: 6000,
+    hp: 850,
+    strength: 45,
+    defense: 50,
+    stamina: 60,
+    intelligence: 65,
+    speed: 50,
+    skills: [
+      ["Shu", 25, 1500, 1],
+      ["Ren Básico", 40, 3500, 7],
+      ["Kō Avançado", 60, 7000, 15]
+    ]
+  },
+  {
+    id: "hanzo",
+    name: "Hanzo",
+    rarity: "Comum",
+    chance: 6,
+    value: 9000,
+    hp: 1000,
+    strength: 60,
+    defense: 55,
+    stamina: 75,
+    intelligence: 70,
+    speed: 90,
+    skills: [
+      ["Ninjutsu", 35, 2500, 1],
+      ["Clone Ninja", 55, 5500, 10],
+      ["Técnica Ninja Suprema", 80, 12000, 22]
+    ]
+  },
+  {
+    id: "ponzu",
+    name: "Ponzu",
+    rarity: "Comum",
+    chance: 5,
+    value: 4500,
+    hp: 750,
+    strength: 35,
+    defense: 35,
+    stamina: 55,
+    intelligence: 65,
+    speed: 50,
+    skills: [
+      ["Abelhas", 20, 1200, 1],
+      ["Ataque de Abelhas", 35, 3000, 6],
+      ["Enxame", 55, 6500, 14]
+    ]
+  },
+  {
+    id: "shizuku",
     name: "Shizuku",
     rarity: "Incomum",
-    chance: 7,
-    nen: 70,
-    type: "Conjuração",
-    hp: 120,
-    strength: 65,
-    defense: 65,
+    chance: 5,
+    value: 12000,
+    hp: 1050,
+    strength: 60,
+    defense: 60,
     stamina: 70,
-    intelligence: 80,
-    speed: 60,
-    skills: ["Blinky"]
+    intelligence: 75,
+    speed: 55,
+    skills: [
+      ["Blinky", 35, 3000, 1],
+      ["Limpeza Total", 55, 6500, 10],
+      ["Sucção Brutal", 80, 13000, 22]
+    ]
   },
-
   {
+    id: "shalnark",
+    name: "Shalnark",
+    rarity: "Incomum",
+    chance: 4.5,
+    value: 14000,
+    hp: 1000,
+    strength: 55,
+    defense: 55,
+    stamina: 70,
+    intelligence: 90,
+    speed: 65,
+    skills: [
+      ["Antena", 30, 2500, 1],
+      ["Autopilot", 65, 8000, 12],
+      ["Autopilot Supremo", 90, 16000, 25]
+    ]
+  },
+  {
+    id: "machi",
     name: "Machi",
     rarity: "Incomum",
-    chance: 6,
-    nen: 76,
-    type: "Transmutação",
-    hp: 125,
+    chance: 4,
+    value: 16000,
+    hp: 1100,
+    strength: 65,
+    defense: 70,
+    stamina: 80,
+    intelligence: 80,
+    speed: 75,
+    skills: [
+      ["Fios de Nen", 35, 3000, 1],
+      ["Costura de Nen", 60, 7000, 10],
+      ["Fios Mortais", 90, 15000, 24]
+    ]
+  },
+  {
+    id: "phinks",
+    name: "Phinks",
+    rarity: "Incomum",
+    chance: 3.8,
+    value: 18000,
+    hp: 1200,
+    strength: 90,
+    defense: 75,
+    stamina: 80,
+    intelligence: 55,
+    speed: 65,
+    skills: [
+      ["Soco Reforçado", 40, 3500, 1],
+      ["Ripper Cyclotron", 75, 9000, 12],
+      ["Ripper Cyclotron Máximo", 110, 18000, 28]
+    ]
+  },
+  {
+    id: "franklin",
+    name: "Franklin",
+    rarity: "Incomum",
+    chance: 3.5,
+    value: 19000,
+    hp: 1250,
+    strength: 80,
+    defense: 75,
+    stamina: 85,
+    intelligence: 55,
+    speed: 50,
+    skills: [
+      ["Double Machine Gun", 40, 3500, 1],
+      ["Rajada de Nen", 65, 7000, 10],
+      ["Metralhadora Suprema", 100, 16000, 25]
+    ]
+  },
+  {
+    id: "nobunaga",
+    name: "Nobunaga",
+    rarity: "Incomum",
+    chance: 3.5,
+    value: 19000,
+    hp: 1150,
+    strength: 80,
+    defense: 70,
+    stamina: 75,
+    intelligence: 65,
+    speed: 80,
+    skills: [
+      ["Iai", 45, 4000, 1],
+      ["Corte de Nen", 70, 8000, 12],
+      ["Iai Supremo", 105, 17000, 28]
+    ]
+  },
+  {
+    id: "bonolenov",
+    name: "Bonolenov",
+    rarity: "Incomum",
+    chance: 3,
+    value: 20000,
+    hp: 1150,
     strength: 75,
     defense: 70,
     stamina: 80,
-    intelligence: 82,
-    speed: 78,
-    skills: ["Fios de Nen"]
+    intelligence: 70,
+    speed: 65,
+    skills: [
+      ["Battle Cantabile", 40, 3500, 1],
+      ["Jupiter", 70, 8500, 12],
+      ["Dance Suprema", 105, 18000, 30]
+    ]
   },
-
   {
-    name: "Phinks",
+    id: "pakunoda",
+    name: "Pakunoda",
     rarity: "Incomum",
-    chance: 5,
-    nen: 78,
-    type: "Reforço",
-    hp: 140,
-    strength: 90,
+    chance: 3,
+    value: 15000,
+    hp: 950,
+    strength: 50,
+    defense: 50,
+    stamina: 65,
+    intelligence: 90,
+    speed: 55,
+    skills: [
+      ["Memory Bomb", 35, 3000, 1],
+      ["Memory Scan", 50, 5500, 8],
+      ["Memory Bullet", 75, 11000, 20]
+    ]
+  },
+  {
+    id: "kortopi",
+    name: "Kortopi",
+    rarity: "Incomum",
+    chance: 2.5,
+    value: 17000,
+    hp: 850,
+    strength: 35,
+    defense: 45,
+    stamina: 60,
+    intelligence: 95,
+    speed: 45,
+    skills: [
+      ["Gallery Fake", 30, 3000, 1],
+      ["Cópia Perfeita", 50, 6000, 10],
+      ["Cópia em Massa", 75, 12000, 22]
+    ]
+  },
+  {
+    id: "gon",
+    name: "Gon Freecss",
+    rarity: "Raro",
+    chance: 4,
+    value: 25000,
+    hp: 1300,
+    strength: 95,
     defense: 80,
-    stamina: 85,
-    intelligence: 60,
-    speed: 70,
-    skills: ["Ripper Cyclotron"]
-  },
-
-  {
-    name: "Feitan",
-    rarity: "Incomum",
-    chance: 5,
-    nen: 82,
-    type: "Transmutação",
-    hp: 130,
-    strength: 82,
-    defense: 75,
     stamina: 90,
-    intelligence: 85,
-    speed: 95,
-    skills: ["Pain Packer"]
+    intelligence: 55,
+    speed: 75,
+    skills: [
+      ["Pedra", 60, 8000, 10],
+      ["Tesoura", 50, 6000, 8],
+      ["Papel", 40, 5000, 6],
+      ["Jajanken Supremo", 110, 25000, 30]
+    ]
   },
-
   {
+    id: "killua",
     name: "Killua Zoldyck",
     rarity: "Raro",
     chance: 4,
-    nen: 87,
-    type: "Transmutação",
-    hp: 145,
-    strength: 88,
-    defense: 82,
-    stamina: 96,
-    intelligence: 94,
-    speed: 100,
-    skills: ["Eletricidade", "Godspeed"]
+    value: 28000,
+    hp: 1200,
+    strength: 80,
+    defense: 70,
+    stamina: 100,
+    intelligence: 85,
+    speed: 110,
+    skills: [
+      ["Palma Elétrica", 30, 3000, 5],
+      ["Eletricidade", 45, 6000, 10],
+      ["Thunderbolt", 60, 10000, 18],
+      ["Godspeed", 90, 18000, 30],
+      ["Godspeed Supremo", 125, 35000, 50]
+    ]
   },
-
   {
+    id: "kurapika",
     name: "Kurapika",
     rarity: "Raro",
     chance: 3.5,
-    nen: 92,
-    type: "Conjuração",
-    hp: 140,
-    strength: 80,
-    defense: 80,
-    stamina: 85,
-    intelligence: 98,
-    speed: 82,
-    skills: ["Dowsing Chain", "Emperor Time"]
+    value: 30000,
+    hp: 1150,
+    strength: 70,
+    defense: 75,
+    stamina: 80,
+    intelligence: 100,
+    speed: 70,
+    skills: [
+      ["Dowsing Chain", 40, 5000, 5],
+      ["Holy Chain", 55, 8000, 12],
+      ["Chain Jail", 75, 15000, 22],
+      ["Judgment Chain", 90, 22000, 32],
+      ["Emperor Time", 120, 40000, 50]
+    ]
   },
-
   {
+    id: "uvogin",
     name: "Uvogin",
     rarity: "Raro",
     chance: 3,
-    nen: 90,
-    type: "Reforço",
-    hp: 200,
-    strength: 100,
-    defense: 98,
-    stamina: 95,
+    value: 32000,
+    hp: 1600,
+    strength: 125,
+    defense: 100,
+    stamina: 100,
     intelligence: 45,
-    speed: 65,
-    skills: ["Big Bang Impact"]
+    speed: 55,
+    skills: [
+      ["Soco Brutal", 45, 4000, 1],
+      ["Rugido", 55, 6000, 8],
+      ["Big Bang Impact", 90, 14000, 20],
+      ["Big Bang Impact Supremo", 140, 35000, 45]
+    ]
   },
-
   {
+    id: "feitan",
+    name: "Feitan",
+    rarity: "Raro",
+    chance: 2.8,
+    value: 35000,
+    hp: 1100,
+    strength: 85,
+    defense: 70,
+    stamina: 90,
+    intelligence: 80,
+    speed: 115,
+    skills: [
+      ["Sword Slash", 40, 4000, 1],
+      ["Ko", 65, 8000, 10],
+      ["Pain Packer", 100, 18000, 25],
+      ["Rising Sun", 150, 45000, 50]
+    ]
+  },
+  {
+    id: "knuckle",
+    name: "Knuckle Bine",
+    rarity: "Raro",
+    chance: 2.7,
+    value: 33000,
+    hp: 1250,
+    strength: 80,
+    defense: 80,
+    stamina: 90,
+    intelligence: 85,
+    speed: 65,
+    skills: [
+      ["Hakoware", 40, 5000, 5],
+      ["Juros", 65, 9000, 15],
+      ["APR", 85, 16000, 28]
+    ]
+  },
+  {
+    id: "shoot",
+    name: "Shoot McMahon",
+    rarity: "Raro",
+    chance: 2.5,
+    value: 30000,
+    hp: 1100,
+    strength: 65,
+    defense: 75,
+    stamina: 85,
+    intelligence: 90,
+    speed: 75,
+    skills: [
+      ["Hotel Rafflesia", 40, 5000, 5],
+      ["Mãos Flutuantes", 60, 8000, 12],
+      ["Captura Total", 90, 17000, 28]
+    ]
+  },
+  {
+    id: "morel",
+    name: "Morel",
+    rarity: "Raro",
+    chance: 2.3,
+    value: 38000,
+    hp: 1300,
+    strength: 70,
+    defense: 80,
+    stamina: 110,
+    intelligence: 100,
+    speed: 55,
+    skills: [
+      ["Deep Purple", 40, 5000, 5],
+      ["Smoke Soldier", 60, 9000, 12],
+      ["Smoky Jail", 85, 16000, 25],
+      ["Deep Purple Supremo", 120, 30000, 45]
+    ]
+  },
+  {
+    id: "palm",
+    name: "Palm Siberia",
+    rarity: "Raro",
+    chance: 2,
+    value: 32000,
+    hp: 1050,
+    strength: 60,
+    defense: 65,
+    stamina: 75,
+    intelligence: 90,
+    speed: 60,
+    skills: [
+      ["Wink Blue", 35, 4000, 1],
+      ["Black Widow", 60, 8000, 12],
+      ["Enforcers", 90, 17000, 28]
+    ]
+  },
+  {
+    id: "kite",
+    name: "Kite",
+    rarity: "Épico",
+    chance: 1.8,
+    value: 50000,
+    hp: 1350,
+    strength: 90,
+    defense: 85,
+    stamina: 95,
+    intelligence: 90,
+    speed: 80,
+    skills: [
+      ["Crazy Slots", 45, 6000, 5],
+      ["Foice", 70, 10000, 15],
+      ["Arma Aleatória", 90, 16000, 25],
+      ["Crazy Slots Supremo", 125, 35000, 45]
+    ]
+  },
+  {
+    id: "hisoka",
     name: "Hisoka",
     rarity: "Épico",
     chance: 2,
-    nen: 95,
-    type: "Transmutação",
-    hp: 165,
-    strength: 92,
-    defense: 88,
-    stamina: 94,
-    intelligence: 100,
-    speed: 92,
-    skills: ["Bungee Gum", "Texture Surprise"]
-  },
-
-  {
-    name: "Illumi Zoldyck",
-    rarity: "Épico",
-    chance: 1.8,
-    nen: 94,
-    type: "Manipulação",
-    hp: 155,
-    strength: 84,
-    defense: 82,
-    stamina: 90,
-    intelligence: 99,
-    speed: 88,
-    skills: ["Needle People"]
-  },
-
-  {
-    name: "Zeno Zoldyck",
-    rarity: "Épico",
-    chance: 1.5,
-    nen: 96,
-    type: "Emissão",
-    hp: 180,
-    strength: 94,
-    defense: 92,
+    value: 60000,
+    hp: 1400,
+    strength: 100,
+    defense: 90,
     stamina: 95,
     intelligence: 100,
     speed: 90,
-    skills: ["Dragon Head", "Dragon Dive"]
+    skills: [
+      ["Bungee Gum", 35, 4000, 1],
+      ["Texture Surprise", 25, 3000, 5],
+      ["Armadilha de Bungee Gum", 60, 10000, 15],
+      ["Bungee Gum Avançado", 95, 22000, 30],
+      ["Bungee Gum Supremo", 130, 40000, 50]
+    ]
   },
-
   {
+    id: "illumi",
+    name: "Illumi Zoldyck",
+    rarity: "Épico",
+    chance: 1.8,
+    value: 65000,
+    hp: 1250,
+    strength: 80,
+    defense: 75,
+    stamina: 90,
+    intelligence: 105,
+    speed: 85,
+    skills: [
+      ["Agulhas", 40, 5000, 1],
+      ["Controle Humano", 65, 10000, 12],
+      ["Corpo Transformado", 80, 15000, 22],
+      ["Exército de Agulhas", 115, 30000, 40]
+    ]
+  },
+  {
+    id: "biscuit",
+    name: "Biscuit Krueger",
+    rarity: "Épico",
+    chance: 1.5,
+    value: 70000,
+    hp: 1500,
+    strength: 110,
+    defense: 100,
+    stamina: 105,
+    intelligence: 110,
+    speed: 80,
+    skills: [
+      ["Forma Verdadeira", 50, 7000, 5],
+      ["Golpe Reforçado", 75, 12000, 15],
+      ["Força Monstruosa", 110, 25000, 30],
+      ["Biscuit Suprema", 145, 45000, 50]
+    ]
+  },
+  {
+    id: "silva",
+    name: "Silva Zoldyck",
+    rarity: "Épico",
+    chance: 1.3,
+    value: 75000,
+    hp: 1550,
+    strength: 120,
+    defense: 105,
+    stamina: 100,
+    intelligence: 95,
+    speed: 90,
+    skills: [
+      ["Esfera de Nen", 55, 7000, 5],
+      ["Orbe de Aura", 80, 12000, 15],
+      ["Impacto Explosivo", 110, 23000, 30],
+      ["Esfera Suprema", 150, 45000, 50]
+    ]
+  },
+  {
+    id: "zeno",
+    name: "Zeno Zoldyck",
+    rarity: "Épico",
+    chance: 1.2,
+    value: 80000,
+    hp: 1500,
+    strength: 105,
+    defense: 100,
+    stamina: 105,
+    intelligence: 110,
+    speed: 100,
+    skills: [
+      ["Dragon Head", 45, 6000, 5],
+      ["Dragon Lance", 65, 10000, 15],
+      ["Dragon Dive", 90, 20000, 28],
+      ["Dragon Supremo", 135, 40000, 50]
+    ]
+  },
+  {
+    id: "razor",
+    name: "Razor",
+    rarity: "Lendário",
+    chance: 0.9,
+    value: 100000,
+    hp: 1800,
+    strength: 135,
+    defense: 115,
+    stamina: 120,
+    intelligence: 90,
+    speed: 80,
+    skills: [
+      ["Nen Ball", 60, 8000, 5],
+      ["14 Devils", 85, 15000, 18],
+      ["Throw Nen", 120, 30000, 35],
+      ["Nen Ball Supremo", 160, 55000, 55]
+    ]
+  },
+  {
+    id: "chrollo",
     name: "Chrollo Lucilfer",
     rarity: "Lendário",
     chance: 1,
-    nen: 98,
-    type: "Especialização",
-    hp: 180,
-    strength: 90,
-    defense: 88,
-    stamina: 95,
-    intelligence: 100,
-    speed: 94,
-    skills: ["Skill Hunter"]
+    value: 120000,
+    hp: 1500,
+    strength: 100,
+    defense: 95,
+    stamina: 105,
+    intelligence: 125,
+    speed: 95,
+    skills: [
+      ["Skill Hunter", 35, 8000, 5],
+      ["Double Face", 50, 12000, 12],
+      ["Sun & Moon", 80, 22000, 25],
+      ["Black Voice", 95, 28000, 35],
+      ["Skill Hunter Supremo", 150, 55000, 60]
+    ]
   },
-
   {
-    name: "Netero",
+    id: "netero",
+    name: "Isaac Netero",
     rarity: "Lendário",
     chance: 0.7,
-    nen: 99,
-    type: "Reforço",
-    hp: 190,
-    strength: 98,
-    defense: 95,
-    stamina: 100,
-    intelligence: 100,
-    speed: 100,
-    skills: ["100-Type Guanyin Bodhisattva"]
+    value: 150000,
+    hp: 1900,
+    strength: 140,
+    defense: 130,
+    stamina: 125,
+    intelligence: 130,
+    speed: 135,
+    skills: [
+      ["Zero Hand", 70, 10000, 10],
+      ["Guanyin", 100, 20000, 25],
+      ["100-Type Guanyin", 140, 35000, 40],
+      ["Zero Hand Supremo", 190, 70000, 65]
+    ]
   },
-
   {
+    id: "ging",
     name: "Ging Freecss",
     rarity: "Lendário",
     chance: 0.5,
-    nen: 99,
-    type: "Especialização",
-    hp: 190,
-    strength: 95,
-    defense: 94,
-    stamina: 98,
-    intelligence: 100,
-    speed: 96,
-    skills: ["Copy"]
+    value: 180000,
+    hp: 1750,
+    strength: 125,
+    defense: 115,
+    stamina: 125,
+    intelligence: 145,
+    speed: 110,
+    skills: [
+      ["Cópia de Técnica", 55, 10000, 5],
+      ["Ataque Copiado", 80, 18000, 15],
+      ["Nen Adaptativo", 120, 30000, 30],
+      ["Técnica Suprema", 170, 60000, 55]
+    ]
   },
-
   {
+    id: "meruem",
     name: "Meruem",
     rarity: "Mítico",
     chance: 0.2,
-    nen: 100,
-    type: "Especialização",
-    hp: 300,
+    value: 250000,
+    hp: 3000,
+    strength: 200,
+    defense: 180,
+    stamina: 170,
+    intelligence: 180,
+    speed: 150,
+    skills: [
+      ["Aura Dominante", 80, 15000, 10],
+      ["En", 90, 18000, 15],
+      ["Poder da Quimera", 120, 28000, 25],
+      ["Evolução", 160, 45000, 40],
+      ["Rage Blast", 220, 80000, 70]
+    ]
+  },
+  {
+    id: "pitou",
+    name: "Neferpitou",
+    rarity: "Mítico",
+    chance: 0.15,
+    value: 220000,
+    hp: 2600,
+    strength: 175,
+    defense: 170,
+    stamina: 165,
+    intelligence: 160,
+    speed: 145,
+    skills: [
+      ["Doctor Blythe", 60, 12000, 10],
+      ["Terpsichora", 100, 22000, 25],
+      ["En Supremo", 130, 35000, 40],
+      ["Terpsichora Máximo", 190, 65000, 65]
+    ]
+  },
+  {
+    id: "pouf",
+    name: "Shaiapouf",
+    rarity: "Mítico",
+    chance: 0.15,
+    value: 210000,
+    hp: 2500,
     strength: 150,
-    defense: 145,
-    stamina: 150,
-    intelligence: 140,
-    speed: 125,
-    skills: ["Rage Blast"]
+    defense: 160,
+    stamina: 180,
+    intelligence: 170,
+    speed: 140,
+    skills: [
+      ["Beelzebub", 60, 12000, 10],
+      ["Spiritual Message", 80, 18000, 20],
+      ["Cocoon", 110, 30000, 35],
+      ["Divisão Suprema", 175, 60000, 60]
+    ]
+  },
+  {
+    id: "youpi",
+    name: "Menthuthuyoupi",
+    rarity: "Mítico",
+    chance: 0.15,
+    value: 215000,
+    hp: 2800,
+    strength: 190,
+    defense: 190,
+    stamina: 180,
+    intelligence: 130,
+    speed: 120,
+    skills: [
+      ["Metamorfose", 70, 12000, 10],
+      ["Tentáculos", 100, 20000, 20],
+      ["Explosão de Raiva", 150, 35000, 35],
+      ["Rage Blast Supremo", 210, 70000, 60]
+    ]
   }
 ];
+
+// ======================================================
+// NEN
+// ======================================================
+
+const nenTypes = [
+  { name: "Fortificação", chance: 25 },
+  { name: "Emissão", chance: 20 },
+  { name: "Transformação", chance: 20 },
+  { name: "Conjuração", chance: 15 },
+  { name: "Manipulação", chance: 15 },
+  { name: "Especialização", chance: 5 }
+];
+
+function randomNen() {
+  const roll = Math.random() * 100;
+  let total = 0;
+
+  for (const nen of nenTypes) {
+    total += nen.chance;
+    if (roll <= total) return nen.name;
+  }
+
+  return "Fortificação";
+}
 
 // ======================================================
 // BOSSES
@@ -303,264 +786,333 @@ const characters = [
 
 const bosses = [
   {
+    id: "bandit",
     name: "Bandido",
+    group: "Iniciais",
     minLevel: 1,
-    hp: 100,
-    attack: 15,
-    defense: 8,
-    xp: 30,
-    money: 15
-  },
-
-  {
-    name: "Ladrão",
-    minLevel: 5,
-    hp: 150,
-    attack: 22,
-    defense: 12,
-    xp: 45,
-    money: 25
-  },
-
-  {
-    name: "Usuário de Nen",
-    minLevel: 10,
-    hp: 250,
-    attack: 35,
-    defense: 20,
-    xp: 70,
-    money: 40
-  },
-
-  {
-    name: "Hunter Renegado",
-    minLevel: 20,
-    hp: 400,
-    attack: 50,
-    defense: 30,
+    maxLevel: 5,
+    hp: 180,
+    damage: 20,
+    defense: 10,
     xp: 100,
-    money: 60
+    money: 50
   },
-
-  // TRUPE
   {
-    name: "Kalluto",
-    minLevel: 25,
-    hp: 500,
-    attack: 60,
-    defense: 40,
-    xp: 130,
+    id: "thief",
+    name: "Ladrão",
+    group: "Iniciais",
+    minLevel: 5,
+    maxLevel: 10,
+    hp: 280,
+    damage: 30,
+    defense: 15,
+    xp: 180,
     money: 80
   },
-
   {
-    name: "Shizuku",
-    minLevel: 30,
+    id: "nen_user",
+    name: "Usuário de Nen",
+    group: "Iniciais",
+    minLevel: 10,
+    maxLevel: 20,
+    hp: 450,
+    damage: 45,
+    defense: 25,
+    xp: 300,
+    money: 150
+  },
+  {
+    id: "hunter",
+    name: "Hunter Renegado",
+    group: "Iniciais",
+    minLevel: 20,
+    maxLevel: 30,
     hp: 650,
-    attack: 75,
-    defense: 48,
-    xp: 160,
-    money: 100
-  },
-
-  {
-    name: "Shalnark",
-    minLevel: 35,
-    hp: 750,
-    attack: 85,
-    defense: 55,
-    xp: 190,
-    money: 120
-  },
-
-  {
-    name: "Machi",
-    minLevel: 40,
-    hp: 850,
-    attack: 95,
-    defense: 60,
-    xp: 220,
-    money: 140
-  },
-
-  {
-    name: "Nobunaga",
-    minLevel: 45,
-    hp: 950,
-    attack: 105,
-    defense: 65,
-    xp: 250,
-    money: 160
-  },
-
-  {
-    name: "Phinks",
-    minLevel: 50,
-    hp: 1100,
-    attack: 120,
-    defense: 75,
-    xp: 280,
-    money: 180
-  },
-
-  {
-    name: "Feitan",
-    minLevel: 55,
-    hp: 1250,
-    attack: 135,
-    defense: 80,
-    xp: 320,
-    money: 210
-  },
-
-  {
-    name: "Franklin",
-    minLevel: 60,
-    hp: 1400,
-    attack: 145,
-    defense: 90,
-    xp: 350,
-    money: 230
-  },
-
-  {
-    name: "Bonolenov",
-    minLevel: 60,
-    hp: 1450,
-    attack: 150,
-    defense: 92,
-    xp: 370,
-    money: 240
-  },
-
-  {
-    name: "Uvogin",
-    minLevel: 65,
-    hp: 1800,
-    attack: 175,
-    defense: 110,
-    xp: 450,
-    money: 300
-  },
-
-  {
-    name: "Chrollo Lucilfer",
-    minLevel: 70,
-    hp: 2200,
-    attack: 200,
-    defense: 130,
-    xp: 600,
-    money: 400
-  },
-
-  // FORMIGAS
-  {
-    name: "Soldado Quimera",
-    minLevel: 70,
-    hp: 1600,
-    attack: 160,
-    defense: 100,
-    xp: 400,
+    damage: 60,
+    defense: 35,
+    xp: 500,
     money: 250
   },
 
+  // TRUPE FANTASMA
   {
-    name: "Rammot",
-    minLevel: 75,
-    hp: 1900,
-    attack: 180,
-    defense: 115,
-    xp: 500,
-    money: 300
+    id: "kalluto_boss",
+    name: "Kalluto",
+    group: "Trupe Fantasma",
+    minLevel: 25,
+    maxLevel: 35,
+    hp: 800,
+    damage: 70,
+    defense: 45,
+    xp: 700,
+    money: 350
   },
-
   {
-    name: "Cheetu",
-    minLevel: 85,
-    hp: 2300,
-    attack: 210,
-    defense: 125,
-    xp: 600,
+    id: "shizuku_boss",
+    name: "Shizuku",
+    group: "Trupe Fantasma",
+    minLevel: 30,
+    maxLevel: 40,
+    hp: 900,
+    damage: 80,
+    defense: 50,
+    xp: 850,
     money: 400
   },
-
   {
-    name: "Leol",
-    minLevel: 95,
-    hp: 2700,
-    attack: 235,
-    defense: 140,
-    xp: 700,
-    money: 450
+    id: "shalnark_boss",
+    name: "Shalnark",
+    group: "Trupe Fantasma",
+    minLevel: 35,
+    maxLevel: 45,
+    hp: 1000,
+    damage: 90,
+    defense: 55,
+    xp: 1000,
+    money: 500
   },
-
   {
-    name: "Zazan",
-    minLevel: 105,
-    hp: 3200,
-    attack: 260,
-    defense: 160,
-    xp: 850,
-    money: 550
+    id: "machi_boss",
+    name: "Machi",
+    group: "Trupe Fantasma",
+    minLevel: 40,
+    maxLevel: 50,
+    hp: 1100,
+    damage: 100,
+    defense: 65,
+    xp: 1200,
+    money: 600
   },
-
-  // GUARDA REAL
   {
-    name: "Neferpitou",
-    minLevel: 120,
-    hp: 5000,
-    attack: 350,
-    defense: 250,
-    xp: 1300,
+    id: "nobunaga_boss",
+    name: "Nobunaga",
+    group: "Trupe Fantasma",
+    minLevel: 45,
+    maxLevel: 55,
+    hp: 1200,
+    damage: 110,
+    defense: 70,
+    xp: 1400,
+    money: 700
+  },
+  {
+    id: "phinks_boss",
+    name: "Phinks",
+    group: "Trupe Fantasma",
+    minLevel: 50,
+    maxLevel: 60,
+    hp: 1350,
+    damage: 125,
+    defense: 75,
+    xp: 1600,
+    money: 800
+  },
+  {
+    id: "feitan_boss",
+    name: "Feitan",
+    group: "Trupe Fantasma",
+    minLevel: 55,
+    maxLevel: 65,
+    hp: 1450,
+    damage: 140,
+    defense: 80,
+    xp: 1800,
     money: 900
   },
-
   {
-    name: "Shaiapouf",
-    minLevel: 130,
-    hp: 4800,
-    attack: 340,
-    defense: 240,
-    xp: 1250,
-    money: 850
+    id: "franklin_boss",
+    name: "Franklin",
+    group: "Trupe Fantasma",
+    minLevel: 60,
+    maxLevel: 70,
+    hp: 1550,
+    damage: 145,
+    defense: 85,
+    xp: 2000,
+    money: 1000
   },
-
   {
-    name: "Menthuthuyoupi",
-    minLevel: 140,
-    hp: 6000,
-    attack: 400,
-    defense: 300,
-    xp: 1600,
+    id: "bonolenov_boss",
+    name: "Bonolenov",
+    group: "Trupe Fantasma",
+    minLevel: 60,
+    maxLevel: 75,
+    hp: 1600,
+    damage: 150,
+    defense: 90,
+    xp: 2200,
     money: 1100
   },
-
   {
-    name: "Meruem",
-    minLevel: 180,
-    hp: 10000,
-    attack: 600,
-    defense: 450,
+    id: "pakunoda_boss",
+    name: "Pakunoda",
+    group: "Trupe Fantasma",
+    minLevel: 55,
+    maxLevel: 70,
+    hp: 1300,
+    damage: 120,
+    defense: 75,
+    xp: 1700,
+    money: 850
+  },
+  {
+    id: "kortopi_boss",
+    name: "Kortopi",
+    group: "Trupe Fantasma",
+    minLevel: 50,
+    maxLevel: 65,
+    hp: 1250,
+    damage: 115,
+    defense: 70,
+    xp: 1600,
+    money: 800
+  },
+  {
+    id: "uvogin_boss",
+    name: "Uvogin",
+    group: "Trupe Fantasma",
+    minLevel: 65,
+    maxLevel: 80,
+    hp: 2000,
+    damage: 180,
+    defense: 110,
     xp: 3000,
+    money: 1500
+  },
+  {
+    id: "chrollo_boss",
+    name: "Chrollo Lucilfer",
+    group: "Trupe Fantasma",
+    minLevel: 70,
+    maxLevel: 100,
+    hp: 2300,
+    damage: 200,
+    defense: 120,
+    xp: 4000,
+    money: 2000
+  },
+
+  // FORMIGAS QUIMERA
+  {
+    id: "soldier_ant",
+    name: "Soldado Formiga Quimera",
+    group: "Formigas Quimera",
+    minLevel: 70,
+    maxLevel: 85,
+    hp: 1800,
+    damage: 160,
+    defense: 100,
+    xp: 2500,
+    money: 1200
+  },
+  {
+    id: "rammot",
+    name: "Rammot",
+    group: "Formigas Quimera",
+    minLevel: 75,
+    maxLevel: 95,
+    hp: 2100,
+    damage: 190,
+    defense: 115,
+    xp: 3200,
+    money: 1600
+  },
+  {
+    id: "cheetu",
+    name: "Cheetu",
+    group: "Formigas Quimera",
+    minLevel: 85,
+    maxLevel: 105,
+    hp: 2200,
+    damage: 210,
+    defense: 110,
+    xp: 3500,
+    money: 1800
+  },
+  {
+    id: "leol",
+    name: "Leol",
+    group: "Formigas Quimera",
+    minLevel: 95,
+    maxLevel: 115,
+    hp: 2500,
+    damage: 230,
+    defense: 130,
+    xp: 4000,
+    money: 2000
+  },
+  {
+    id: "zazan",
+    name: "Zazan",
+    group: "Formigas Quimera",
+    minLevel: 105,
+    maxLevel: 125,
+    hp: 2800,
+    damage: 250,
+    defense: 145,
+    xp: 5000,
     money: 2500
+  },
+
+  // GUARDAS REAIS
+  {
+    id: "pitou_boss",
+    name: "Neferpitou",
+    group: "Guardas Reais",
+    minLevel: 120,
+    maxLevel: 150,
+    hp: 5000,
+    damage: 400,
+    defense: 250,
+    xp: 9000,
+    money: 5000
+  },
+  {
+    id: "pouf_boss",
+    name: "Shaiapouf",
+    group: "Guardas Reais",
+    minLevel: 130,
+    maxLevel: 160,
+    hp: 5200,
+    damage: 420,
+    defense: 260,
+    xp: 9500,
+    money: 5500
+  },
+  {
+    id: "youpi_boss",
+    name: "Menthuthuyoupi",
+    group: "Guardas Reais",
+    minLevel: 140,
+    maxLevel: 175,
+    hp: 6000,
+    damage: 450,
+    defense: 300,
+    xp: 11000,
+    money: 6500
+  },
+
+  // MERUEM
+  {
+    id: "meruem_boss",
+    name: "Meruem",
+    group: "Rei das Formigas",
+    minLevel: 180,
+    maxLevel: 9999,
+    hp: 10000,
+    damage: 700,
+    defense: 450,
+    xp: 25000,
+    money: 15000
   }
 ];
 
 // ======================================================
-// FUNÇÕES
+// UTILIDADES
 // ======================================================
 
-function getCharacter(name) {
-  return characters.find(c => c.name === name);
-}
-
-function getBoss(name) {
-  return bosses.find(b => b.name === name);
-}
-
-function randomCharacter() {
+function weightedCharacter() {
   const total = characters.reduce((sum, c) => sum + c.chance, 0);
-
   let roll = Math.random() * total;
 
   for (const character of characters) {
@@ -574,58 +1126,155 @@ function randomCharacter() {
   return characters[0];
 }
 
-function createPlayer(id) {
-  const character = randomCharacter();
+function getCharacter(id) {
+  return characters.find(c => c.id === id);
+}
 
-  players[id] = {
-    id,
+function getBoss(id) {
+  return bosses.find(b => b.id === id);
+}
 
-    character: character.name,
+function createPlayer(userId) {
+  const character = weightedCharacter();
+  const nen = randomNen();
+
+  const maxHp = character.hp;
+  const maxStamina = character.stamina;
+
+  players[userId] = {
+    userId,
+
+    characterId: character.id,
+    characterName: character.name,
     rarity: character.rarity,
+    characterChance: character.chance,
+    characterValue: character.value,
+
+    nen,
 
     level: 1,
     xp: 0,
-    money: 100,
-    upgradePoints: 5,
+    totalXp: 0,
+    money: 0,
 
-    hp: character.hp,
-    maxHp: character.hp,
+    hp: maxHp,
+    maxHp,
+
+    stamina: maxStamina,
+    maxStamina,
 
     strength: character.strength,
     defense: character.defense,
-    stamina: character.stamina,
     intelligence: character.intelligence,
     speed: character.speed,
 
-    nen: character.nen,
-    nenType: character.type,
+    upgradePoints: 5,
 
-    skills: [...character.skills],
+    unlockedSkills: [],
 
-    currentBoss: null
+    wins: 0,
+    losses: 0,
+
+    currentBossId: null,
+    currentBossHp: 0,
+
+    createdAt: Date.now()
   };
 
-  saveDB();
+  savePlayers();
 
-  return players[id];
+  return players[userId];
 }
 
-function levelUp(player) {
-  let didLevel = false;
-
-  while (player.xp >= player.level * 100) {
-    player.xp -= player.level * 100;
-
-    player.level++;
-    player.upgradePoints += 3;
-
-    player.maxHp += 20;
-    player.hp = player.maxHp;
-
-    didLevel = true;
+function getPlayer(userId) {
+  if (!players[userId]) {
+    return createPlayer(userId);
   }
 
-  return didLevel;
+  return players[userId];
+}
+
+function xpNeeded(level) {
+  return Math.floor(100 * Math.pow(level, 1.35));
+}
+
+function addXp(player, amount) {
+  player.xp += amount;
+  player.totalXp += amount;
+
+  let levels = 0;
+
+  while (player.xp >= xpNeeded(player.level)) {
+    player.xp -= xpNeeded(player.level);
+    player.level++;
+    player.upgradePoints += 3;
+    levels++;
+  }
+
+  return levels;
+}
+
+function isAdmin(userId) {
+  return ADMIN_IDS.includes(userId);
+}
+
+function randomBossForLevel(level) {
+  const available = bosses.filter(
+    boss => level >= boss.minLevel
+  );
+
+  if (!available.length) {
+    return bosses[0];
+  }
+
+  return available[Math.floor(Math.random() * available.length)];
+}
+
+function calculatePlayerDamage(player) {
+  const character = getCharacter(player.characterId);
+
+  let damage =
+    Math.floor(
+      player.strength * 0.7 +
+      player.speed * 0.2 +
+      player.intelligence * 0.1
+    );
+
+  if (player.nen === "Fortificação") damage += 15;
+  if (player.nen === "Emissão") damage += 10;
+  if (player.nen === "Transformação") damage += 12;
+  if (player.nen === "Conjuração") damage += 8;
+  if (player.nen === "Manipulação") damage += 8;
+  if (player.nen === "Especialização") damage += 20;
+
+  if (character) {
+    damage += Math.floor(character.strength * 0.15);
+  }
+
+  return Math.max(5, damage);
+}
+
+function calculateBossDamage(player, boss, defending = false) {
+  let damage = boss.damage - Math.floor(player.defense * 0.35);
+
+  if (defending) {
+    damage = Math.floor(damage * 0.45);
+  }
+
+  return Math.max(1, damage);
+}
+
+function embedColor(rarity) {
+  const colors = {
+    "Comum": 0x95a5a6,
+    "Incomum": 0x2ecc71,
+    "Raro": 0x3498db,
+    "Épico": 0x9b59b6,
+    "Lendário": 0xf1c40f,
+    "Mítico": 0xe74c3c
+  };
+
+  return colors[rarity] || 0x5865F2;
 }
 
 // ======================================================
@@ -633,132 +1282,403 @@ function levelUp(player) {
 // ======================================================
 
 function panelEmbed(player) {
-  const character = getCharacter(player.character);
+  const character = getCharacter(player.characterId);
 
   return new EmbedBuilder()
-    .setTitle("⚔️ HUNTER × HUNTER RPG")
+    .setColor(embedColor(player.rarity))
+    .setTitle("🎮 Hunter x Hunter RPG")
     .setDescription(
-      `🎭 **Personagem:** ${player.character}\n` +
-      `⭐ **Raridade:** ${player.rarity}\n` +
-      `🌀 **Nen:** ${player.nen}% — ${player.nenType}\n\n` +
-      `📈 **Nível:** ${player.level}\n` +
-      `✨ **XP:** ${player.xp}/${player.level * 100}\n` +
-      `💰 **Dinheiro:** ¥${player.money}\n` +
-      `🔮 **Pontos:** ${player.upgradePoints}`
+      `**${player.characterName}** • ${player.rarity}\n` +
+      `🔮 Nen: **${player.nen}**\n\n` +
+      `📊 **Nível:** ${player.level}\n` +
+      `✨ **XP:** ${player.xp}/${xpNeeded(player.level)}\n` +
+      `💰 **Dinheiro:** ${player.money}\n\n` +
+      `❤️ **Vida:** ${player.hp}/${player.maxHp}\n` +
+      `⚡ **Stamina:** ${player.stamina}/${player.maxStamina}\n\n` +
+      `💪 Força: ${player.strength}\n` +
+      `🛡️ Defesa: ${player.defense}\n` +
+      `🧠 Inteligência: ${player.intelligence}\n` +
+      `💨 Velocidade: ${player.speed}\n\n` +
+      `📈 Pontos de upgrade: **${player.upgradePoints}**`
     )
-    .addFields({
-      name: "📊 ATRIBUTOS",
-      value:
-        `❤️ Vida: **${player.hp}/${player.maxHp}**\n` +
-        `⚔️ Força: **${player.strength}**\n` +
-        `🛡️ Defesa: **${player.defense}**\n` +
-        `⚡ Stamina: **${player.stamina}**\n` +
-        `🧠 Inteligência: **${player.intelligence}**\n` +
-        `💨 Velocidade: **${player.speed}**`
-    })
     .setFooter({
-      text: `Tipo de Nen: ${character.type}`
+      text: "Hunter x Hunter RPG • Use os botões para jogar"
     });
 }
 
 function characterEmbed(player) {
-  const character = getCharacter(player.character);
+  const character = getCharacter(player.characterId);
+
+  const skills = character.skills
+    .map((skill, i) => {
+      const [name, damage, cost, level] = skill;
+      const unlocked = player.unlockedSkills.includes(i);
+
+      return `${unlocked ? "✅" : "🔒"} **${name}** — 💥 ${damage} dano — ✨ ${cost} XP — Lv.${level}`;
+    })
+    .join("\n");
 
   return new EmbedBuilder()
+    .setColor(embedColor(player.rarity))
     .setTitle(`🎭 ${character.name}`)
     .setDescription(
       `⭐ **Raridade:** ${character.rarity}\n` +
-      `🎯 **Chance:** ${character.chance}%\n` +
-      `💠 **Potencial Nen:** ${character.nen}%\n` +
-      `🌀 **Tipo:** ${character.type}`
-    )
-    .addFields({
-      name: "📊 Atributos",
-      value:
-        `❤️ Vida: **${character.hp}**\n` +
-        `⚔️ Força: **${character.strength}**\n` +
-        `🛡️ Defesa: **${character.defense}**\n` +
-        `⚡ Stamina: **${character.stamina}**\n` +
-        `🧠 Inteligência: **${character.intelligence}**\n` +
-        `💨 Velocidade: **${character.speed}**`
-    }, {
-      name: "✨ Habilidades",
-      value: character.skills.map(s => `• ${s}`).join("\n")
-    });
+      `🎲 **Chance:** ${character.chance}%\n` +
+      `💰 **Valor:** ${character.value}\n` +
+      `🔮 **Nen:** ${player.nen}\n\n` +
+      `❤️ HP: ${player.maxHp}\n` +
+      `💪 Força: ${player.strength}\n` +
+      `🛡️ Defesa: ${player.defense}\n` +
+      `⚡ Stamina: ${player.maxStamina}\n` +
+      `🧠 Inteligência: ${player.intelligence}\n` +
+      `💨 Velocidade: ${player.speed}\n\n` +
+      `**⚡ Poderes do personagem**\n${skills}`
+    );
 }
 
-function bossEmbed(player, boss) {
+function nenEmbed(player) {
+  const nen = nenTypes.find(n => n.name === player.nen);
+
   return new EmbedBuilder()
-    .setTitle(`👹 ${boss.name}`)
+    .setColor(0x8e44ad)
+    .setTitle("🔮 Seu Nen")
     .setDescription(
-      `🔓 **Nível necessário:** ${boss.minLevel}\n\n` +
-      `❤️ **HP:** ${boss.hp}\n` +
-      `⚔️ **Ataque:** ${boss.attack}\n` +
-      `🛡️ **Defesa:** ${boss.defense}\n\n` +
-      `✨ **XP:** ${boss.xp}\n` +
-      `💰 **Recompensa:** ¥${boss.money}`
+      `Seu Nen foi sorteado **separadamente do personagem**.\n\n` +
+      `🔮 **Tipo:** ${player.nen}\n` +
+      `🎲 **Chance do tipo:** ${nen ? nen.chance : "?"}%\n\n` +
+      `⚠️ O Nen **não pode ser girado novamente**.\n` +
+      `🎭 Os poderes/habilidades disponíveis continuam sendo determinados pelo seu personagem.`
+    );
+}
+
+function profileEmbed(player) {
+  return new EmbedBuilder()
+    .setColor(embedColor(player.rarity))
+    .setTitle(`👤 Perfil de ${player.characterName}`)
+    .addFields(
+      {
+        name: "🎭 Personagem",
+        value:
+          `${player.characterName}\n` +
+          `⭐ ${player.rarity}\n` +
+          `🎲 ${player.characterChance}%\n` +
+          `💰 Valor: ${player.characterValue}`,
+        inline: true
+      },
+      {
+        name: "🔮 Nen",
+        value: `${player.nen}`,
+        inline: true
+      },
+      {
+        name: "📊 Progressão",
+        value:
+          `Nível: ${player.level}\n` +
+          `XP: ${player.xp}/${xpNeeded(player.level)}\n` +
+          `XP total: ${player.totalXp}\n` +
+          `💰 Dinheiro: ${player.money}`,
+        inline: true
+      },
+      {
+        name: "❤️ Combate",
+        value:
+          `HP: ${player.hp}/${player.maxHp}\n` +
+          `Stamina: ${player.stamina}/${player.maxStamina}\n` +
+          `Força: ${player.strength}\n` +
+          `Defesa: ${player.defense}`,
+        inline: true
+      },
+      {
+        name: "🧠 Atributos",
+        value:
+          `Inteligência: ${player.intelligence}\n` +
+          `Velocidade: ${player.speed}\n` +
+          `Upgrades: ${player.upgradePoints}`,
+        inline: true
+      },
+      {
+        name: "🏆 Histórico",
+        value:
+          `Vitórias: ${player.wins}\n` +
+          `Derrotas: ${player.losses}`,
+        inline: true
+      }
+    );
+}
+
+function skillsEmbed(player) {
+  const character = getCharacter(player.characterId);
+
+  const text = character.skills
+    .map((skill, index) => {
+      const [name, damage, cost, level] = skill;
+      const unlocked = player.unlockedSkills.includes(index);
+
+      return (
+        `${unlocked ? "✅" : "🔒"} **${name}**\n` +
+        `💥 Dano: ${damage}\n` +
+        `✨ XP: ${cost}\n` +
+        `📊 Nível: ${level}\n`
+      );
+    })
+    .join("\n");
+
+  return new EmbedBuilder()
+    .setColor(0x3498db)
+    .setTitle(`⚡ Habilidades de ${character.name}`)
+    .setDescription(
+      `As habilidades são determinadas pelo seu personagem.\n` +
+      `Você usa XP para desbloqueá-las.\n\n${text}`
+    );
+}
+
+function upgradeEmbed(player) {
+  return new EmbedBuilder()
+    .setColor(0x2ecc71)
+    .setTitle("📈 Upgrades")
+    .setDescription(
+      `Você possui **${player.upgradePoints} pontos**.\n\n` +
+      `❤️ Vida: ${player.maxHp}\n` +
+      `⚡ Stamina: ${player.maxStamina}\n` +
+      `💪 Força: ${player.strength}\n` +
+      `🛡️ Defesa: ${player.defense}\n` +
+      `🧠 Inteligência: ${player.intelligence}\n` +
+      `💨 Velocidade: ${player.speed}\n\n` +
+      `Cada upgrade custa **1 ponto**.`
+    );
+}
+
+function battleEmbed(player) {
+  const boss = getBoss(player.currentBossId);
+
+  if (!boss) {
+    return panelEmbed(player);
+  }
+
+  const hpPercent = Math.max(
+    0,
+    Math.floor((player.currentBossHp / boss.hp) * 100)
+  );
+
+  return new EmbedBuilder()
+    .setColor(0xe74c3c)
+    .setTitle(`⚔️ Batalha — ${boss.name}`)
+    .setDescription(
+      `👹 **${boss.name}**\n` +
+      `🏷️ ${boss.group}\n` +
+      `📊 Nível mínimo: ${boss.minLevel}\n\n` +
+      `❤️ **Boss HP:** ${player.currentBossHp}/${boss.hp} (${hpPercent}%)\n` +
+      `💥 **Dano do Boss:** ${boss.damage}\n` +
+      `🛡️ **Defesa do Boss:** ${boss.defense}\n\n` +
+      `👤 **${player.characterName}**\n` +
+      `❤️ Vida: ${player.hp}/${player.maxHp}\n` +
+      `⚡ Stamina: ${player.stamina}/${player.maxStamina}\n\n` +
+      `💥 Seu dano básico: ${calculatePlayerDamage(player)}`
     );
 }
 
 // ======================================================
-// BOTÕES DO PAINEL
+// BOTÕES
 // ======================================================
 
 function mainButtons() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("character")
+        .setLabel("Personagem")
+        .setEmoji("🎭")
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId("nen")
+        .setLabel("Nen")
+        .setEmoji("🔮")
+        .setStyle(ButtonStyle.Secondary),
+
+      new ButtonBuilder()
+        .setCustomId("bosses")
+        .setLabel("Bosses")
+        .setEmoji("👹")
+        .setStyle(ButtonStyle.Danger)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("skills")
+        .setLabel("Habilidades")
+        .setEmoji("⚡")
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId("upgrades")
+        .setLabel("Upgrades")
+        .setEmoji("📈")
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId("profile")
+        .setLabel("Perfil")
+        .setEmoji("👤")
+        .setStyle(ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("battle_random")
+        .setLabel("Batalhar")
+        .setEmoji("⚔️")
+        .setStyle(ButtonStyle.Danger),
+
+      new ButtonBuilder()
+        .setCustomId("refresh")
+        .setLabel("Atualizar")
+        .setEmoji("🔄")
+        .setStyle(ButtonStyle.Secondary)
+    )
+  ];
+}
+
+function backButton() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId("character")
-      .setLabel("🎭 Personagem")
-      .setStyle(ButtonStyle.Primary),
-
-    new ButtonBuilder()
-      .setCustomId("bosses")
-      .setLabel("👹 Bosses")
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId("skills")
-      .setLabel("✨ Habilidades")
-      .setStyle(ButtonStyle.Secondary),
-
-    new ButtonBuilder()
-      .setCustomId("upgrades")
-      .setLabel("📈 Upgrades")
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId("refresh")
-      .setLabel("🔄 Atualizar")
+      .setCustomId("back_panel")
+      .setLabel("Voltar")
+      .setEmoji("⬅️")
       .setStyle(ButtonStyle.Secondary)
   );
 }
 
-// ======================================================
-// BOTÕES DE BATALHA
-// ======================================================
+function upgradeButtons() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("up_hp")
+        .setLabel("Vida +")
+        .setEmoji("❤️")
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId("up_stamina")
+        .setLabel("Stamina +")
+        .setEmoji("⚡")
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId("up_strength")
+        .setLabel("Força +")
+        .setEmoji("💪")
+        .setStyle(ButtonStyle.Primary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("up_defense")
+        .setLabel("Defesa +")
+        .setEmoji("🛡️")
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId("up_intelligence")
+        .setLabel("Inteligência +")
+        .setEmoji("🧠")
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId("up_speed")
+        .setLabel("Velocidade +")
+        .setEmoji("💨")
+        .setStyle(ButtonStyle.Primary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("back_panel")
+        .setLabel("Voltar")
+        .setEmoji("⬅️")
+        .setStyle(ButtonStyle.Secondary)
+    )
+  ];
+}
 
 function battleButtons() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("attack")
-      .setLabel("⚔️ Atacar")
-      .setStyle(ButtonStyle.Danger),
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("attack")
+        .setLabel("Atacar")
+        .setEmoji("⚔️")
+        .setStyle(ButtonStyle.Danger),
 
-    new ButtonBuilder()
-      .setCustomId("use_skill")
-      .setLabel("✨ Habilidade")
-      .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("use_skill")
+        .setLabel("Habilidade")
+        .setEmoji("⚡")
+        .setStyle(ButtonStyle.Primary),
 
-    new ButtonBuilder()
-      .setCustomId("defend")
-      .setLabel("🛡️ Defender")
-      .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("defend")
+        .setLabel("Defender")
+        .setEmoji("🛡️")
+        .setStyle(ButtonStyle.Success),
 
-    new ButtonBuilder()
-      .setCustomId("flee")
-      .setLabel("🏃 Fugir")
-      .setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder()
+        .setCustomId("flee")
+        .setLabel("Fugir")
+        .setEmoji("🏃")
+        .setStyle(ButtonStyle.Secondary)
+    )
+  ];
+}
+
+// ======================================================
+// REGISTRO DO /RPG E /ADM
+// ======================================================
+
+const commands = [
+  new SlashCommandBuilder()
+    .setName("rpg")
+    .setDescription("Abrir o Hunter x Hunter RPG"),
+
+  new SlashCommandBuilder()
+    .setName("adm")
+    .setDescription("Painel administrativo do RPG")
+    .addStringOption(option =>
+      option
+        .setName("acao")
+        .setDescription("Ação administrativa")
+        .setRequired(true)
+        .addChoices(
+          { name: "Dar XP", value: "give_xp" },
+          { name: "Dar dinheiro", value: "give_money" },
+          { name: "Dar nível", value: "give_level" },
+          { name: "Dar upgrade", value: "give_upgrade" },
+          { name: "Evento XP", value: "event_xp" },
+          { name: "Evento dinheiro", value: "event_money" }
+        )
+    )
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Jogador que receberá a recompensa")
+        .setRequired(false)
+    )
+    .addIntegerOption(option =>
+      option
+        .setName("quantidade")
+        .setDescription("Quantidade")
+        .setRequired(false)
+        .setMinValue(1)
+    )
+];
+
+async function registerCommands() {
+  const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+  await rest.put(
+    Routes.applicationCommands(CLIENT_ID),
+    {
+      body: commands.map(command => command.toJSON())
+    }
   );
+
+  console.log("Comandos registrados.");
 }
 
 // ======================================================
@@ -766,27 +1686,12 @@ function battleButtons() {
 // ======================================================
 
 client.once("ready", async () => {
-  console.log(`✅ ${client.user.tag} está online!`);
+  console.log(`${client.user.tag} está online!`);
 
   try {
-    const rest = new REST({ version: "10" }).setToken(TOKEN);
-
-    const commands = [
-      new SlashCommandBuilder()
-        .setName("rpg")
-        .setDescription("Abrir o Hunter x Hunter RPG")
-    ];
-
-    await rest.put(
-      Routes.applicationCommands(CLIENT_ID),
-      {
-        body: commands.map(command => command.toJSON())
-      }
-    );
-
-    console.log("✅ /rpg registrado.");
+    await registerCommands();
   } catch (error) {
-    console.error("Erro ao registrar comando:", error);
+    console.error("Erro registrando comandos:", error);
   }
 });
 
@@ -796,714 +1701,337 @@ client.once("ready", async () => {
 
 client.on("interactionCreate", async interaction => {
   try {
-
     // ==================================================
     // /RPG
     // ==================================================
 
-    if (interaction.isChatInputCommand()) {
+    if (interaction.isChatInputCommand() && interaction.commandName === "rpg") {
+      const isNew = !players[interaction.user.id];
 
-      if (interaction.commandName !== "rpg") return;
+      const player = getPlayer(interaction.user.id);
 
-      let player = players[interaction.user.id];
-
-      if (!player) {
-        player = createPlayer(interaction.user.id);
-
-        return interaction.reply({
-          content: "🎲 **Seu personagem foi sorteado!**",
-          embeds: [characterEmbed(player)],
-          components: [mainButtons()]
-        });
-      }
-
-      return interaction.reply({
-        embeds: [panelEmbed(player)],
-        components: [mainButtons()]
-      });
-    }
-
-    const player = players[interaction.user.id];
-
-    if (!player) {
-      return interaction.reply({
-        content: "❌ Use `/rpg` primeiro.",
-        ephemeral: true
-      });
-    }
-
-    // ==================================================
-    // ATUALIZAR
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "refresh"
-    ) {
-      return interaction.update({
-        embeds: [panelEmbed(player)],
-        components: [mainButtons()]
-      });
-    }
-
-    // ==================================================
-    // PERSONAGEM
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "character"
-    ) {
-      return interaction.update({
-        embeds: [characterEmbed(player)],
-        components: [
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("back_panel")
-              .setLabel("↩️ Voltar")
-              .setStyle(ButtonStyle.Secondary)
-          )
-        ]
-      });
-    }
-
-    // ==================================================
-    // VOLTAR
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "back_panel"
-    ) {
-      return interaction.update({
-        embeds: [panelEmbed(player)],
-        components: [mainButtons()]
-      });
-    }
-
-    // ==================================================
-    // BOSSES
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "bosses"
-    ) {
-
-      const available = bosses.filter(
-        boss => player.level >= boss.minLevel
-      );
-
-      if (!available.length) {
-        return interaction.update({
+      if (isNew) {
+        await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setTitle("👹 BOSSES")
+              .setColor(embedColor(player.rarity))
+              .setTitle("🎉 Seu personagem foi sorteado!")
               .setDescription(
-                "Você ainda não possui bosses disponíveis."
+                `🎭 **${player.characterName}**\n` +
+                `⭐ Raridade: **${player.rarity}**\n` +
+                `🎲 Chance: **${player.characterChance}%**\n\n` +
+                `🔮 Seu Nen também foi sorteado:\n` +
+                `**${player.nen}**\n\n` +
+                `Use os botões abaixo para começar.`
               )
           ],
-          components: [
-            new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId("back_panel")
-                .setLabel("↩️ Voltar")
-                .setStyle(ButtonStyle.Secondary)
-            )
-          ]
+          components: mainButtons()
+        });
+      } else {
+        await interaction.reply({
+          embeds: [panelEmbed(player)],
+          components: mainButtons()
         });
       }
 
-      const options = available.slice(0, 25).map(boss => ({
-        label: boss.name,
-        description: `Nível ${boss.minLevel}+ • ${boss.hp} HP`,
-        value: boss.name
-      }));
+      return;
+    }
+
+    // ==================================================
+    // /ADM
+    // ==================================================
+
+    if (interaction.isChatInputCommand() && interaction.commandName === "adm") {
+      if (!isAdmin(interaction.user.id)) {
+        return interaction.reply({
+          content: "❌ Você não tem permissão para usar este comando.",
+          ephemeral: true
+        });
+      }
+
+      const action = interaction.options.getString("acao");
+      const target = interaction.options.getUser("usuario");
+      const amount = interaction.options.getInteger("quantidade") || 1;
+
+      if (action.startsWith("event_")) {
+        let affected = 0;
+
+        for (const id of Object.keys(players)) {
+          const p = players[id];
+
+          if (action === "event_xp") {
+            addXp(p, amount);
+          }
+
+          if (action === "event_money") {
+            p.money += amount;
+          }
+
+          affected++;
+        }
+
+        savePlayers();
+
+        return interaction.reply({
+          content:
+            `🎉 **Evento realizado!**\n` +
+            `👥 Jogadores afetados: **${affected}**\n` +
+            `${action === "event_xp" ? "✨ XP" : "💰 Dinheiro"} recebido: **${amount}**`,
+          ephemeral: true
+        });
+      }
+
+      if (!target) {
+        return interaction.reply({
+          content: "❌ Você precisa selecionar um usuário.",
+          ephemeral: true
+        });
+      }
+
+      const player = getPlayer(target.id);
+
+      if (action === "give_xp") {
+        const levels = addXp(player, amount);
+
+        savePlayers();
+
+        return interaction.reply({
+          content:
+            `✨ **${amount} XP** adicionados a ${target}.\n` +
+            `📊 Nível atual: **${player.level}**` +
+            (levels ? `\n⬆️ Subiu **${levels} nível(is)**!` : ""),
+          ephemeral: true
+        });
+      }
+
+      if (action === "give_money") {
+        player.money += amount;
+        savePlayers();
+
+        return interaction.reply({
+          content: `💰 **${amount}** adicionados para ${target}.`,
+          ephemeral: true
+        });
+      }
+
+      if (action === "give_level") {
+        player.level += amount;
+        player.upgradePoints += amount * 3;
+
+        savePlayers();
+
+        return interaction.reply({
+          content:
+            `📊 ${target} recebeu **${amount} nível(is)**.\n` +
+            `Novo nível: **${player.level}**`,
+          ephemeral: true
+        });
+      }
+
+      if (action === "give_upgrade") {
+        player.upgradePoints += amount;
+        savePlayers();
+
+        return interaction.reply({
+          content:
+            `📈 ${target} recebeu **${amount} ponto(s) de upgrade**.`,
+          ephemeral: true
+        });
+      }
+    }
+
+    // ==================================================
+    // BOTÕES
+    // ==================================================
+
+    if (!interaction.isButton() && !interaction.isStringSelectMenu()) {
+      return;
+    }
+
+    const player = getPlayer(interaction.user.id);
+
+    // --------------------------------------------------
+    // PERSONAGEM
+    // --------------------------------------------------
+
+    if (interaction.customId === "character") {
+      return interaction.update({
+        embeds: [characterEmbed(player)],
+        components: [backButton()]
+      });
+    }
+
+    // --------------------------------------------------
+    // NEN
+    // --------------------------------------------------
+
+    if (interaction.customId === "nen") {
+      return interaction.update({
+        embeds: [nenEmbed(player)],
+        components: [backButton()]
+      });
+    }
+
+    // --------------------------------------------------
+    // PERFIL
+    // --------------------------------------------------
+
+    if (interaction.customId === "profile") {
+      return interaction.update({
+        embeds: [profileEmbed(player)],
+        components: [backButton()]
+      });
+    }
+
+    // --------------------------------------------------
+    // HABILIDADES
+    // --------------------------------------------------
+
+    if (interaction.customId === "skills") {
+      const character = getCharacter(player.characterId);
+
+      const options = character.skills.map((skill, index) => {
+        const unlocked = player.unlockedSkills.includes(index);
+
+        return {
+          label: skill[0],
+          description: unlocked
+            ? "Habilidade já desbloqueada"
+            : `${skill[1]} dano • ${skill[2]} XP • nível ${skill[3]}`,
+          value: String(index)
+        };
+      });
 
       const menu = new StringSelectMenuBuilder()
-        .setCustomId("boss_select")
-        .setPlaceholder("Escolha um boss")
+        .setCustomId("unlock_skill")
+        .setPlaceholder("Selecione uma habilidade")
         .addOptions(options);
 
       return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("👹 BOSSES DISPONÍVEIS")
-            .setDescription(
-              `📈 Seu nível: **${player.level}**\n\n` +
-              `Escolha um boss para começar a batalha.`
-            )
-        ],
+        embeds: [skillsEmbed(player)],
         components: [
           new ActionRowBuilder().addComponents(menu),
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("back_panel")
-              .setLabel("↩️ Voltar")
-              .setStyle(ButtonStyle.Secondary)
-          )
+          backButton()
         ]
       });
     }
 
-    // ==================================================
-    // ESCOLHER BOSS
-    // ==================================================
+    // --------------------------------------------------
+    // DESBLOQUEAR HABILIDADE
+    // --------------------------------------------------
 
-    if (
-      interaction.isStringSelectMenu() &&
-      interaction.customId === "boss_select"
-    ) {
+    if (interaction.customId === "unlock_skill") {
+      const index = Number(interaction.values[0]);
+      const character = getCharacter(player.characterId);
+      const skill = character.skills[index];
 
-      const boss = getBoss(interaction.values[0]);
-
-      if (!boss) {
+      if (!skill) {
         return interaction.update({
-          content: "❌ Boss não encontrado.",
-          embeds: [],
-          components: []
+          embeds: [skillsEmbed(player)],
+          components: [backButton()]
         });
       }
 
-      player.currentBoss = {
-        name: boss.name,
-        hp: boss.hp,
-        maxHp: boss.hp
-      };
+      const [name, damage, cost, requiredLevel] = skill;
 
-      saveDB();
-
-      return interaction.update({
-        content: null,
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(`⚔️ BATALHA — ${boss.name}`)
-            .setDescription(
-              `🎭 **${player.character}**\n` +
-              `❤️ Seu HP: **${player.hp}/${player.maxHp}**\n\n` +
-              `👹 **${boss.name}**\n` +
-              `❤️ HP: **${boss.hp}/${boss.hp}**`
-            )
-        ],
-        components: [battleButtons()]
-      });
-    }
-
-    // ==================================================
-    // ATAQUE
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "attack"
-    ) {
-
-      if (!player.currentBoss) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: [mainButtons()]
-        });
-      }
-
-      const boss = getBoss(player.currentBoss.name);
-
-      if (!boss) return;
-
-      const damage = Math.floor(
-        player.strength * 0.7 +
-        player.nen * 0.5 +
-        Math.random() * 30
-      );
-
-      player.currentBoss.hp -= damage;
-
-      // VITÓRIA
-      if (player.currentBoss.hp <= 0) {
-
-        player.xp += boss.xp;
-        player.money += boss.money;
-
-        const leveled = levelUp(player);
-
-        player.currentBoss = null;
-
-        saveDB();
-
+      if (player.unlockedSkills.includes(index)) {
         return interaction.update({
           embeds: [
             new EmbedBuilder()
-              .setTitle("🏆 VITÓRIA!")
+              .setColor(0x2ecc71)
+              .setTitle("⚡ Habilidade")
               .setDescription(
-                `Você derrotou **${boss.name}**!\n\n` +
-                `⚔️ Dano: **${damage}**\n` +
-                `✨ XP: **+${boss.xp}**\n` +
-                `💰 Dinheiro: **+¥${boss.money}**` +
-                (leveled
-                  ? `\n\n🎉 **LEVEL UP!**\n📈 Agora você é nível **${player.level}**!`
-                  : "")
+                `✅ **${name}** já está desbloqueada!\n\n` +
+                `💥 Dano: **${damage}**`
               )
           ],
-          components: [mainButtons()]
+          components: [backButton()]
         });
       }
 
-      // ATAQUE DO BOSS
-      const bossDamage = Math.max(
-        1,
-        Math.floor(
-          boss.attack -
-          player.defense * 0.25 +
-          Math.random() * 20
-        )
-      );
-
-      player.hp -= bossDamage;
-
-      // DERROTA
-      if (player.hp <= 0) {
-
-        player.hp = player.maxHp;
-        player.currentBoss = null;
-
-        saveDB();
-
+      if (player.level < requiredLevel) {
         return interaction.update({
           embeds: [
             new EmbedBuilder()
-              .setTitle("💀 DERROTA")
+              .setColor(0xe67e22)
+              .setTitle("🔒 Habilidade bloqueada")
               .setDescription(
-                `Você foi derrotado por **${boss.name}**.\n\n` +
-                `❤️ Seu HP foi restaurado.\n` +
-                `📈 Seu nível e XP foram mantidos.`
+                `**${name}**\n\n` +
+                `📊 Nível necessário: **${requiredLevel}**\n` +
+                `📊 Seu nível: **${player.level}**`
               )
           ],
-          components: [mainButtons()]
+          components: [backButton()]
         });
       }
 
-      saveDB();
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(`⚔️ BATALHA — ${boss.name}`)
-            .setDescription(
-              `🎭 **${player.character}**\n` +
-              `❤️ Seu HP: **${player.hp}/${player.maxHp}**\n\n` +
-              `👹 **${boss.name}**\n` +
-              `❤️ HP: **${player.currentBoss.hp}/${boss.hp}**\n\n` +
-              `⚔️ Você causou **${damage}** de dano.\n` +
-              `💥 O boss causou **${bossDamage}** de dano.`
-            )
-        ],
-        components: [battleButtons()]
-      });
-    }
-
-    // ==================================================
-    // DEFENDER
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "defend"
-    ) {
-
-      if (!player.currentBoss) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: [mainButtons()]
-        });
-      }
-
-      const boss = getBoss(player.currentBoss.name);
-
-      const damage = Math.max(
-        1,
-        Math.floor(
-          boss.attack * 0.25 -
-          player.defense * 0.1
-        )
-      );
-
-      player.hp -= damage;
-
-      if (player.hp <= 0) {
-
-        player.hp = player.maxHp;
-        player.currentBoss = null;
-
-        saveDB();
-
+      if (player.totalXp < cost) {
         return interaction.update({
           embeds: [
             new EmbedBuilder()
-              .setTitle("💀 DERROTA")
+              .setColor(0xe74c3c)
+              .setTitle("❌ XP insuficiente")
               .setDescription(
-                `Você não conseguiu resistir ao ataque.\n\n` +
-                `❤️ HP restaurado.`
+                `**${name}** custa **${cost} XP**.\n\n` +
+                `✨ Seu XP total: **${player.totalXp}**`
               )
           ],
-          components: [mainButtons()]
+          components: [backButton()]
         });
       }
 
-      saveDB();
+      player.totalXp -= cost;
+      player.unlockedSkills.push(index);
+
+      savePlayers();
 
       return interaction.update({
         embeds: [
           new EmbedBuilder()
-            .setTitle(`🛡️ DEFESA — ${boss.name}`)
+            .setColor(0x2ecc71)
+            .setTitle("⚡ Habilidade desbloqueada!")
             .setDescription(
-              `Você reduziu o dano recebido.\n\n` +
-              `❤️ HP: **${player.hp}/${player.maxHp}**\n` +
-              `👹 ${boss.name}: **${player.currentBoss.hp}/${boss.hp} HP**`
+              `✅ **${name}** foi desbloqueada!\n\n` +
+              `💥 Dano: **${damage}**\n` +
+              `✨ XP gasto: **${cost}**`
             )
         ],
-        components: [battleButtons()]
+        components: [backButton()]
       });
     }
 
-    // ==================================================
-    // FUGIR
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "flee"
-    ) {
-
-      player.currentBoss = null;
-
-      saveDB();
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("🏃 BATALHA ENCERRADA")
-            .setDescription(
-              `Você fugiu da batalha.\n\n` +
-              `Seu painel foi atualizado.`
-            )
-        ],
-        components: [mainButtons()]
-      });
-    }
-
-    // ==================================================
-    // HABILIDADES
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "skills"
-    ) {
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("✨ HABILIDADES")
-            .setDescription(
-              player.skills.length
-                ? player.skills
-                    .map(skill => `🔮 **${skill}**`)
-                    .join("\n")
-                : "Você não possui habilidades."
-            )
-        ],
-        components: [
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("back_panel")
-              .setLabel("↩️ Voltar")
-              .setStyle(ButtonStyle.Secondary)
-          )
-        ]
-      });
-    }
-
-    // ==================================================
-    // USAR HABILIDADE
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "use_skill"
-    ) {
-
-      if (!player.currentBoss) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: [mainButtons()]
-        });
-      }
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId("battle_skill")
-        .setPlaceholder("Escolha uma habilidade")
-        .addOptions(
-          player.skills.map(skill => ({
-            label: skill,
-            description: `Usar ${skill}`,
-            value: skill
-          }))
-        );
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("✨ HABILIDADES DE BATALHA")
-            .setDescription(
-              `Escolha uma habilidade para atacar **${player.currentBoss.name}**.`
-            )
-        ],
-        components: [
-          new ActionRowBuilder().addComponents(menu),
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("back_battle")
-              .setLabel("↩️ Voltar para batalha")
-              .setStyle(ButtonStyle.Secondary)
-          )
-        ]
-      });
-    }
-
-    // ==================================================
-    // VOLTAR PARA BATALHA
-    // ==================================================
-
-    if (
-      interaction.isButton() &&
-      interaction.customId === "back_battle"
-    ) {
-
-      if (!player.currentBoss) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: [mainButtons()]
-        });
-      }
-
-      const boss = getBoss(player.currentBoss.name);
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(`⚔️ BATALHA — ${boss.name}`)
-            .setDescription(
-              `🎭 **${player.character}**\n` +
-              `❤️ Seu HP: **${player.hp}/${player.maxHp}**\n\n` +
-              `👹 **${boss.name}**\n` +
-              `❤️ HP: **${player.currentBoss.hp}/${boss.hp}**`
-            )
-        ],
-        components: [battleButtons()]
-      });
-    }
-
-    // ==================================================
-    // HABILIDADE SELECIONADA
-    // ==================================================
-
-    if (
-      interaction.isStringSelectMenu() &&
-      interaction.customId === "battle_skill"
-    ) {
-
-      if (!player.currentBoss) {
-        return interaction.update({
-          embeds: [panelEmbed(player)],
-          components: [mainButtons()]
-        });
-      }
-
-      const boss = getBoss(player.currentBoss.name);
-      const skill = interaction.values[0];
-
-      const damage = Math.floor(
-        player.nen * 1.5 +
-        player.strength +
-        Math.random() * 80
-      );
-
-      player.currentBoss.hp -= damage;
-
-      // VITÓRIA
-      if (player.currentBoss.hp <= 0) {
-
-        player.xp += boss.xp;
-        player.money += boss.money;
-
-        const leveled = levelUp(player);
-
-        player.currentBoss = null;
-
-        saveDB();
-
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle("🏆 VITÓRIA!")
-              .setDescription(
-                `✨ Você usou **${skill}**!\n` +
-                `💥 Dano: **${damage}**\n\n` +
-                `👹 **${boss.name}** foi derrotado!\n\n` +
-                `✨ XP: **+${boss.xp}**\n` +
-                `💰 Dinheiro: **+¥${boss.money}**` +
-                (leveled
-                  ? `\n\n🎉 **LEVEL UP!**\n📈 Agora você é nível **${player.level}**!`
-                  : "")
-              )
-          ],
-          components: [mainButtons()]
-        });
-      }
-
-      // BOSS CONTRA-ATACA
-      const bossDamage = Math.max(
-        1,
-        Math.floor(
-          boss.attack -
-          player.defense * 0.2 +
-          Math.random() * 20
-        )
-      );
-
-      player.hp -= bossDamage;
-
-      if (player.hp <= 0) {
-
-        player.hp = player.maxHp;
-        player.currentBoss = null;
-
-        saveDB();
-
-        return interaction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle("💀 DERROTA")
-              .setDescription(
-                `O boss derrotou você após sua habilidade.\n\n` +
-                `❤️ Seu HP foi restaurado.`
-              )
-          ],
-          components: [mainButtons()]
-        });
-      }
-
-      saveDB();
-
-      return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(`⚔️ BATALHA — ${boss.name}`)
-            .setDescription(
-              `✨ **${skill}** causou **${damage}** de dano!\n\n` +
-              `👤 **${player.character}**\n` +
-              `❤️ HP: **${player.hp}/${player.maxHp}**\n\n` +
-              `👹 **${boss.name}**\n` +
-              `❤️ HP: **${player.currentBoss.hp}/${boss.hp}**\n\n` +
-              `💥 O boss causou **${bossDamage}** de dano.`
-            )
-        ],
-        components: [battleButtons()]
-      });
-    }
-
-    // ==================================================
+    // --------------------------------------------------
     // UPGRADES
-    // ==================================================
+    // --------------------------------------------------
 
-    if (
-      interaction.isButton() &&
-      interaction.customId === "upgrades"
-    ) {
-
+    if (interaction.customId === "upgrades") {
       return interaction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("📈 UPGRADES")
-            .setDescription(
-              `🔮 **Pontos disponíveis:** ${player.upgradePoints}\n\n` +
-              `❤️ Vida: **${player.maxHp}**\n` +
-              `⚔️ Força: **${player.strength}**\n` +
-              `🛡️ Defesa: **${player.defense}**\n` +
-              `⚡ Stamina: **${player.stamina}**\n` +
-              `💨 Velocidade: **${player.speed}**`
-            )
-        ],
-        components: [
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("up_hp")
-              .setLabel("❤️ Vida")
-              .setStyle(ButtonStyle.Danger),
-
-            new ButtonBuilder()
-              .setCustomId("up_str")
-              .setLabel("⚔️ Força")
-              .setStyle(ButtonStyle.Primary),
-
-            new ButtonBuilder()
-              .setCustomId("up_def")
-              .setLabel("🛡️ Defesa")
-              .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-              .setCustomId("up_sta")
-              .setLabel("⚡ Stamina")
-              .setStyle(ButtonStyle.Secondary),
-
-            new ButtonBuilder()
-              .setCustomId("up_speed")
-              .setLabel("💨 Velocidade")
-              .setStyle(ButtonStyle.Secondary)
-          ),
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("back_panel")
-              .setLabel("↩️ Voltar")
-              .setStyle(ButtonStyle.Secondary)
-          )
-        ]
+        embeds: [upgradeEmbed(player)],
+        components: upgradeButtons()
       });
     }
-
-    // ==================================================
-    // UPGRADES INDIVIDUAIS
-    // ==================================================
 
     const upgradeMap = {
       up_hp: "hp",
-      up_str: "strength",
-      up_def: "defense",
-      up_sta: "stamina",
+      up_stamina: "stamina",
+      up_strength: "strength",
+      up_defense: "defense",
+      up_intelligence: "intelligence",
       up_speed: "speed"
     };
 
-    if (
-      interaction.isButton() &&
-      upgradeMap[interaction.customId]
-    ) {
-
+    if (upgradeMap[interaction.customId]) {
       if (player.upgradePoints <= 0) {
         return interaction.update({
           embeds: [
             new EmbedBuilder()
-              .setTitle("❌ SEM PONTOS")
+              .setColor(0xe74c3c)
+              .setTitle("❌ Sem pontos")
               .setDescription(
-                "Você não possui pontos de upgrade."
+                "Você não possui pontos de upgrade disponíveis."
               )
           ],
-          components: [
-            new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId("back_panel")
-                .setLabel("↩️ Voltar")
-                .setStyle(ButtonStyle.Secondary)
-            )
-          ]
+          components: upgradeButtons()
         });
       }
 
@@ -1512,57 +2040,596 @@ client.on("interactionCreate", async interaction => {
       player.upgradePoints--;
 
       if (stat === "hp") {
-        player.maxHp += 25;
-        player.hp += 25;
+        player.maxHp += 50;
+        player.hp = Math.min(player.maxHp, player.hp + 50);
+      } else if (stat === "stamina") {
+        player.maxStamina += 10;
+        player.stamina = Math.min(player.maxStamina, player.stamina + 10);
       } else {
         player[stat] += 5;
       }
 
-      saveDB();
+      savePlayers();
+
+      return interaction.update({
+        embeds: [upgradeEmbed(player)],
+        components: upgradeButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // BOSSES
+    // --------------------------------------------------
+
+    if (interaction.customId === "bosses") {
+      const available = bosses.filter(
+        boss => player.level >= boss.minLevel
+      );
+
+      if (!available.length) {
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xe74c3c)
+              .setTitle("👹 Bosses")
+              .setDescription(
+                "Você ainda não possui nenhum boss disponível."
+              )
+          ],
+          components: [backButton()]
+        });
+      }
+
+      const options = available.slice(0, 25).map(boss => ({
+        label: boss.name,
+        description:
+          `${boss.group} • Lv.${boss.minLevel}+ • ${boss.damage} dano`,
+        value: boss.id
+      }));
+
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId("boss_select")
+        .setPlaceholder("Escolha um boss disponível")
+        .addOptions(options);
 
       return interaction.update({
         embeds: [
           new EmbedBuilder()
-            .setTitle("📈 UPGRADE REALIZADO")
+            .setColor(0xe74c3c)
+            .setTitle("👹 Bosses disponíveis")
             .setDescription(
-              `Você aumentou **${stat}** em **+5**.\n\n` +
-              `🔮 Pontos restantes: **${player.upgradePoints}**`
+              `Seu nível: **${player.level}**\n\n` +
+              available
+                .map(
+                  b =>
+                    `👹 **${b.name}** — ${b.group} — Lv.${b.minLevel}+`
+                )
+                .join("\n")
             )
         ],
         components: [
+          new ActionRowBuilder().addComponents(menu),
+          backButton()
+        ]
+      });
+    }
+
+    // --------------------------------------------------
+    // BATALHA RANDOM
+    // --------------------------------------------------
+
+    if (interaction.customId === "battle_random") {
+      if (player.hp <= 0) {
+        player.hp = Math.max(1, Math.floor(player.maxHp * 0.25));
+        player.stamina = Math.max(
+          1,
+          Math.floor(player.maxStamina * 0.25)
+        );
+      }
+
+      const boss = randomBossForLevel(player.level);
+
+      player.currentBossId = boss.id;
+      player.currentBossHp = boss.hp;
+
+      savePlayers();
+
+      return interaction.update({
+        embeds: [battleEmbed(player)],
+        components: battleButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // SELEÇÃO DE BOSS
+    // --------------------------------------------------
+
+    if (interaction.customId === "boss_select") {
+      const boss = getBoss(interaction.values[0]);
+
+      if (!boss || player.level < boss.minLevel) {
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xe74c3c)
+              .setTitle("❌ Boss indisponível")
+              .setDescription(
+                "Seu nível ainda não permite enfrentar esse boss."
+              )
+          ],
+          components: [backButton()]
+        });
+      }
+
+      player.currentBossId = boss.id;
+      player.currentBossHp = boss.hp;
+
+      savePlayers();
+
+      return interaction.update({
+        embeds: [battleEmbed(player)],
+        components: battleButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // ATAQUE
+    // --------------------------------------------------
+
+    if (interaction.customId === "attack") {
+      const boss = getBoss(player.currentBossId);
+
+      if (!boss) {
+        return interaction.update({
+          embeds: [panelEmbed(player)],
+          components: mainButtons()
+        });
+      }
+
+      const damage = calculatePlayerDamage(player);
+
+      player.currentBossHp -= damage;
+      player.stamina = Math.max(0, player.stamina - 5);
+
+      if (player.currentBossHp <= 0) {
+        player.currentBossHp = 0;
+
+        const levels = addXp(player, boss.xp);
+        player.money += boss.money;
+        player.wins++;
+
+        player.currentBossId = null;
+        player.currentBossHp = 0;
+
+        player.hp = Math.min(player.maxHp, player.hp + 50);
+        player.stamina = Math.min(
+          player.maxStamina,
+          player.stamina + 15
+        );
+
+        savePlayers();
+
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x2ecc71)
+              .setTitle("🏆 Vitória!")
+              .setDescription(
+                `Você derrotou **${boss.name}**!\n\n` +
+                `⚔️ Dano causado: **${damage}**\n` +
+                `✨ XP recebido: **${boss.xp}**\n` +
+                `💰 Dinheiro recebido: **${boss.money}**\n\n` +
+                `📊 Nível: **${player.level}**` +
+                (levels
+                  ? `\n⬆️ Você subiu **${levels} nível(is)!**`
+                  : "")
+              )
+          ],
+          components: mainButtons()
+        });
+      }
+
+      const bossDamage = calculateBossDamage(player, boss);
+
+      player.hp -= bossDamage;
+      player.stamina = Math.max(
+        0,
+        player.stamina - Math.floor(bossDamage * 0.15)
+      );
+
+      if (player.hp <= 0) {
+        player.hp = 0;
+        player.losses++;
+
+        // PENALIDADE DE MORTE
+        player.maxHp = Math.max(
+          100,
+          player.maxHp - 50
+        );
+
+        player.maxStamina = Math.max(
+          20,
+          player.maxStamina - 10
+        );
+
+        player.hp = Math.max(
+          1,
+          Math.floor(player.maxHp * 0.25)
+        );
+
+        player.stamina = Math.max(
+          1,
+          Math.floor(player.maxStamina * 0.25)
+        );
+
+        player.currentBossId = null;
+        player.currentBossHp = 0;
+
+        savePlayers();
+
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x000000)
+              .setTitle("💀 Você morreu!")
+              .setDescription(
+                `Você foi derrotado por **${boss.name}**.\n\n` +
+                `📉 **Penalidade:**\n` +
+                `❤️ Vida máxima: -50\n` +
+                `⚡ Stamina máxima: -10\n\n` +
+                `📈 Use **Upgrades** para recuperar e aumentar seus atributos.\n\n` +
+                `❤️ Vida atual: ${player.hp}/${player.maxHp}\n` +
+                `⚡ Stamina atual: ${player.stamina}/${player.maxStamina}`
+              )
+          ],
+          components: mainButtons()
+        });
+      }
+
+      savePlayers();
+
+      return interaction.update({
+        embeds: [
+          battleEmbed(player),
+          new EmbedBuilder()
+            .setColor(0xe67e22)
+            .setDescription(
+              `⚔️ Você causou **${damage} de dano**.\n` +
+              `👹 ${boss.name} causou **${bossDamage} de dano** em você.`
+            )
+        ],
+        components: battleButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // DEFENDER
+    // --------------------------------------------------
+
+    if (interaction.customId === "defend") {
+      const boss = getBoss(player.currentBossId);
+
+      if (!boss) {
+        return interaction.update({
+          embeds: [panelEmbed(player)],
+          components: mainButtons()
+        });
+      }
+
+      const damage = calculateBossDamage(
+        player,
+        boss,
+        true
+      );
+
+      player.hp -= damage;
+      player.stamina = Math.min(
+        player.maxStamina,
+        player.stamina + 8
+      );
+
+      if (player.hp <= 0) {
+        player.hp = 0;
+        player.losses++;
+
+        player.maxHp = Math.max(100, player.maxHp - 50);
+        player.maxStamina = Math.max(
+          20,
+          player.maxStamina - 10
+        );
+
+        player.hp = Math.max(
+          1,
+          Math.floor(player.maxHp * 0.25)
+        );
+
+        player.stamina = Math.max(
+          1,
+          Math.floor(player.maxStamina * 0.25)
+        );
+
+        player.currentBossId = null;
+        player.currentBossHp = 0;
+
+        savePlayers();
+
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x000000)
+              .setTitle("💀 Você morreu!")
+              .setDescription(
+                `Mesmo se defendendo, você foi derrotado por **${boss.name}**.\n\n` +
+                `📉 Vida máxima: **-50**\n` +
+                `📉 Stamina máxima: **-10**\n\n` +
+                `Use **📈 Upgrades** para recuperar seus atributos.`
+              )
+          ],
+          components: mainButtons()
+        });
+      }
+
+      savePlayers();
+
+      return interaction.update({
+        embeds: [battleEmbed(player)],
+        components: battleButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // USAR HABILIDADE
+    // --------------------------------------------------
+
+    if (interaction.customId === "use_skill") {
+      const character = getCharacter(player.characterId);
+
+      const unlocked = character.skills
+        .map((skill, index) => ({
+          skill,
+          index
+        }))
+        .filter(x => player.unlockedSkills.includes(x.index));
+
+      if (!unlocked.length) {
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xe67e22)
+              .setTitle("🔒 Nenhuma habilidade desbloqueada")
+              .setDescription(
+                "Vá em **⚡ Habilidades** e use XP para desbloquear os poderes do seu personagem."
+              )
+          ],
+          components: [backButton()]
+        });
+      }
+
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId("battle_skill")
+        .setPlaceholder("Escolha uma habilidade")
+        .addOptions(
+          unlocked.map(({ skill, index }) => ({
+            label: skill[0],
+            description: `${skill[1]} dano`,
+            value: String(index)
+          }))
+        );
+
+      return interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0x3498db)
+            .setTitle("⚡ Escolha sua habilidade")
+            .setDescription(
+              `Personagem: **${player.characterName}**`
+            )
+        ],
+        components: [
+          new ActionRowBuilder().addComponents(menu),
           new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-              .setCustomId("upgrades")
-              .setLabel("📈 Continuar Upgrades")
-              .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-              .setCustomId("back_panel")
-              .setLabel("↩️ Painel")
+              .setCustomId("back_battle")
+              .setLabel("Voltar para batalha")
+              .setEmoji("⬅️")
               .setStyle(ButtonStyle.Secondary)
           )
         ]
       });
     }
 
-  } catch (error) {
+    // --------------------------------------------------
+    // HABILIDADE NA BATALHA
+    // --------------------------------------------------
 
-    console.error("❌ ERRO:", error);
+    if (interaction.customId === "battle_skill") {
+      const boss = getBoss(player.currentBossId);
+      const character = getCharacter(player.characterId);
 
-    try {
-
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({
-          content: "❌ Ocorreu um erro no RPG."
-        });
-      } else {
-        await interaction.reply({
-          content: "❌ Ocorreu um erro no RPG.",
-          ephemeral: true
+      if (!boss || !character) {
+        return interaction.update({
+          embeds: [panelEmbed(player)],
+          components: mainButtons()
         });
       }
 
-    } catch {}
+      const index = Number(interaction.values[0]);
+      const skill = character.skills[index];
+
+      if (!skill || !player.unlockedSkills.includes(index)) {
+        return interaction.update({
+          embeds: [battleEmbed(player)],
+          components: battleButtons()
+        });
+      }
+
+      const damage = Math.max(
+        1,
+        skill[1] - Math.floor(boss.defense * 0.25)
+      );
+
+      player.currentBossHp -= damage;
+      player.stamina = Math.max(
+        0,
+        player.stamina - 12
+      );
+
+      if (player.currentBossHp <= 0) {
+        player.currentBossHp = 0;
+
+        const levels = addXp(player, boss.xp);
+        player.money += boss.money;
+        player.wins++;
+
+        player.currentBossId = null;
+        player.currentBossHp = 0;
+
+        player.hp = Math.min(
+          player.maxHp,
+          player.hp + 75
+        );
+
+        savePlayers();
+
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x2ecc71)
+              .setTitle("🏆 Vitória com habilidade!")
+              .setDescription(
+                `⚡ Você usou **${skill[0]}**.\n` +
+                `💥 Dano: **${damage}**\n\n` +
+                `👹 Boss derrotado: **${boss.name}**\n` +
+                `✨ XP: **+${boss.xp}**\n` +
+                `💰 Dinheiro: **+${boss.money}**\n\n` +
+                `📊 Nível: **${player.level}**` +
+                (levels
+                  ? `\n⬆️ +${levels} nível(is)!`
+                  : "")
+              )
+          ],
+          components: mainButtons()
+        });
+      }
+
+      const bossDamage = calculateBossDamage(player, boss);
+
+      player.hp -= bossDamage;
+
+      if (player.hp <= 0) {
+        player.hp = 0;
+        player.losses++;
+
+        player.maxHp = Math.max(100, player.maxHp - 50);
+        player.maxStamina = Math.max(
+          20,
+          player.maxStamina - 10
+        );
+
+        player.hp = Math.max(
+          1,
+          Math.floor(player.maxHp * 0.25)
+        );
+
+        player.stamina = Math.max(
+          1,
+          Math.floor(player.maxStamina * 0.25)
+        );
+
+        player.currentBossId = null;
+        player.currentBossHp = 0;
+
+        savePlayers();
+
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x000000)
+              .setTitle("💀 Você morreu!")
+              .setDescription(
+                `Você usou **${skill[0]}**, mas **${boss.name}** derrotou você.\n\n` +
+                `📉 Vida máxima: **-50**\n` +
+                `📉 Stamina máxima: **-10**\n\n` +
+                `Use **📈 Upgrades** para melhorar seus atributos.`
+              )
+          ],
+          components: mainButtons()
+        });
+      }
+
+      savePlayers();
+
+      return interaction.update({
+        embeds: [battleEmbed(player)],
+        components: battleButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // VOLTAR PARA BATALHA
+    // --------------------------------------------------
+
+    if (interaction.customId === "back_battle") {
+      return interaction.update({
+        embeds: [battleEmbed(player)],
+        components: battleButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // FUGIR
+    // --------------------------------------------------
+
+    if (interaction.customId === "flee") {
+      player.currentBossId = null;
+      player.currentBossHp = 0;
+
+      savePlayers();
+
+      return interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0xf1c40f)
+            .setTitle("🏃 Você fugiu!")
+            .setDescription(
+              "A batalha foi encerrada."
+            )
+        ],
+        components: mainButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // VOLTAR AO PAINEL
+    // --------------------------------------------------
+
+    if (interaction.customId === "back_panel") {
+      return interaction.update({
+        embeds: [panelEmbed(player)],
+        components: mainButtons()
+      });
+    }
+
+    // --------------------------------------------------
+    // ATUALIZAR
+    // --------------------------------------------------
+
+    if (interaction.customId === "refresh") {
+      return interaction.update({
+        embeds: [panelEmbed(player)],
+        components: mainButtons()
+      });
+    }
+
+  } catch (error) {
+    console.error("Erro na interação:", error);
+
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({
+        content: "❌ Ocorreu um erro ao executar essa ação.",
+        ephemeral: true
+      });
+    }
   }
 });
 
